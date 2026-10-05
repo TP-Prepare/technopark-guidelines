@@ -2,7 +2,7 @@ import { afterAll, expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { hashOf, pngPathOf, shaPathOf, staleDiagrams, writeHashes } from "./freshness.ts";
+import { checkFresh, hashOf, pngPathOf, shaPathOf, staleDiagrams, writeHashes } from "./freshness.ts";
 
 const JSON_PATH = "rk1/diagrams/a.json";
 
@@ -50,4 +50,18 @@ test("writeHashes: writes hash with newline next to the png", async () => {
   await Bun.write(jsonPath, "{}");
   await writeHashes([jsonPath]);
   expect(await Bun.file(shaPathOf(jsonPath)).text()).toBe(hashOf("{}") + "\n");
+});
+
+test("checkFresh: stale files are printed with a hint and exit code is 1", async () => {
+  const logs: string[] = [];
+  const read = reader({ [JSON_PATH]: "{}" });
+  expect(await checkFresh([JSON_PATH], read, (line) => logs.push(line))).toBe(1);
+  expect(logs).toEqual([`stale: ${JSON_PATH} — run bun run render`]);
+});
+
+test("checkFresh: all fresh prints the count and exit code is 0", async () => {
+  const logs: string[] = [];
+  const read = reader({ [JSON_PATH]: "{}", "rk1/diagrams/a.png": "x", "rk1/diagrams/a.png.sha256": hashOf("{}") + "\n" });
+  expect(await checkFresh([JSON_PATH], read, (line) => logs.push(line))).toBe(0);
+  expect(logs).toEqual(["fresh ok: 1 diagrams"]);
 });
