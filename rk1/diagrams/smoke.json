@@ -1,8 +1,0 @@
-{
-  "entities": [
-    { "tag": "Group", "id": "servers", "x": 0, "y": 0, "width": 160, "height": 160, "color": "green", "title": { "text": "Наши серверы" } },
-    { "tag": "Icon", "id": "api", "x": 20, "y": 40, "width": 120, "height": 80, "icon": "server", "containerId": "servers", "texts": [{ "text": "api.example.ru" }] },
-    { "tag": "Legend", "id": "legend", "x": 200, "y": 0, "width": 340, "entries": [{ "text": "Наши серверы", "color": "#30a050" }] }
-  ],
-  "connections": []
-}
