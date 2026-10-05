@@ -55,7 +55,7 @@ Set-Cookie: __Host-csrf={csrf}; Secure; SameSite=Lax; Path=/; Max-Age=2592000
   всё же не сохраняет cookie на `http://localhost`, включите HTTPS у dev-сервера, а не убирайте
   флаги.
 - **`SameSite=Lax` или `Strict`.** Минимум допускает оба. `Strict` у авторизационных cookie —
-  опция «по желанию» (`csrf.md`).
+  опция «по желанию» ([csrf.md](csrf.md#по-желанию)).
 
 ### Если API на отдельном origin
 
@@ -248,7 +248,7 @@ access живёт не больше 15 минут. Ручка logout наход�
 
 Порядок middleware: CORS (если API на другом origin) → CSRF на `POST`, `PUT`, `PATCH`, `DELETE`
 → проверка access на защищённых ручках → обработчик, который проверяет владельца ресурса
-(`access-control.md`).
+([access-control.md](access-control.md)).
 
 - **Access.** JWT с `sub` и `exp`, подпись проверяется на каждом запросе, алгоритм зафиксирован,
   ключ — в переменной окружения ([basics.md](basics.md#подпись-не-шифрует)). Нет cookie,
@@ -382,7 +382,7 @@ export async function api(path, options = {}) {
 
 ### CSRF-защита в варианте A
 
-Подробный разбор — в `csrf.md`. Коротко, что требуется.
+Подробный разбор — в [csrf.md](csrf.md). Коротко, что требуется.
 
 **Минимум** — Double Submit Cookie:
 
@@ -427,12 +427,12 @@ export async function api(path, options = {}) {
 - **CSRF-защита обязательна** — на каждой изменяющей ручке, и её легко сломать: забыть ручку,
   ответить `401` вместо `403`, менять данные на `GET`.
 - **После logout access живёт до `exp`** — до 15 минут. Мгновенный отзыв всего — в варианте C
-  (`variant-c.md`).
+  ([variant-c.md](variant-c.md)).
 - **Refresh и повтор запроса на фронте** — та же логика, что в варианте B.
 - **Привязка к cookie браузера.** С отдельным origin API нужны CORS с credentials и CSRF-токен в
   теле ответа; клиентам без браузера (мобильное приложение, скрипт) cookie неудобны.
 
-Сравнение с вариантами B и C — в `README.md`.
+Сравнение с вариантами B и C — в [README.md](README.md#варианты-сессии).
 
 ## Источники
 

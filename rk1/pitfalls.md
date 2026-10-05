@@ -234,7 +234,7 @@ curl -i -X OPTIONS https://api.example.ru/api/v1/files/42 \
 ```
 
 С `Origin: https://evil.example` в ответе не должно быть `Access-Control-Allow-Origin`. Готовые
-команды для приёмки — в `checklist.md`.
+команды для приёмки — в [checklist.md](checklist.md#cors-и-preflight).
 
 **Как исправить.** Ничего: это не баг. Если фронт и API на одном origin и CORS-middleware не
 подключён (он там не нужен), CORS-заголовков не будет и с `Origin` ([cors.md](cors.md#когда-cors-не-нужен)).

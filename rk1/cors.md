@@ -70,7 +70,7 @@ CORS (cross-origin resource sharing) — способ, которым серве
 Ловушка: `fetch` со строкой в `body` и без явного `Content-Type` браузер отправит с
 `Content-Type: text/plain;charset=UTF-8` — это простой запрос, preflight не будет. Если бэк при
 этом всё равно разбирает тело как JSON, такую же ручку сможет вызвать и чужой сайт обычной
-формой с `text/plain` (`csrf.md`). Поэтому фронт всегда ставит
+формой с `text/plain` ([csrf.md](csrf.md#настойчиво-рекомендуется)). Поэтому фронт всегда ставит
 `Content-Type: application/json`, а бэк отклоняет изменяющие запросы с другим типом.
 
 ## Заголовки CORS
@@ -250,7 +250,7 @@ const res = await fetch('https://api.example.ru/api/v1/files', {
 - Не добавлять `null`: такой `Origin` у страниц из sandbox-iframe, `data:`- и `file:`-адресов —
   злоумышленник легко сделает страницу с `Origin: null`.
 - Список — из переменной окружения, свой для каждого окружения. `http://localhost:5173` нужен
-  разработке, но не проду (`pitfalls.md`).
+  разработке, но не проду ([pitfalls.md](pitfalls.md#localhost-в-белом-списке-прода)).
 
 Про `SameSite`: `example.ru` и `api.example.ru` — один site, поэтому cookie API с
 `SameSite=Lax` или `Strict` к запросам фронта браузер приложит. `SameSite` решает, уйдёт ли
@@ -305,7 +305,7 @@ site) cookie с явным `SameSite=Lax` к `POST` не уйдёт. Но с с�
 любом типе.
 
 Итог: CORS — не CSRF-защита. Защита — `SameSite`, Double Submit Cookie и проверка `Origin`
-(`csrf.md`).
+([csrf.md](csrf.md)).
 
 ## Когда CORS не нужен
 
@@ -344,7 +344,7 @@ export default defineConfig({
 
 Фронт ходит на `/api/v1/...` относительным путём, Vite пересылает запросы на бэк. Прокси
 работает только в dev-режиме, на проде его роль играет nginx. Заголовок `Origin` прокси
-передаёт как есть — `http://localhost:5173`. Если бэк проверяет `Origin` (`csrf.md`), этот
+передаёт как есть — `http://localhost:5173`. Если бэк проверяет `Origin` ([csrf.md](csrf.md#настойчиво-рекомендуется)), этот
 адрес нужен в белом списке dev-окружения.
 
 ## Как проверить
@@ -356,7 +356,7 @@ export default defineConfig({
 - **`curl` без `Origin` CORS-заголовков не получит.** Middleware (например, `rs/cors`) добавляет
   их, только если в запросе есть `Origin`. «Нет заголовков в `curl`» — не баг: передайте
   `Origin` явно, а для preflight — ещё метод `OPTIONS` и `Access-Control-Request-Method`.
-  Готовые команды с разрешённым и чужим `Origin` — в `checklist.md`.
+  Готовые команды с разрешённым и чужим `Origin` — в [checklist.md](checklist.md#cors-и-preflight).
 
 ## Источники
 
