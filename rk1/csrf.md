@@ -140,8 +140,10 @@ Submit, если CSRF-cookie без префикса `__Host-`
 - прочитать `__Host-csrf` он не может: cookie без `Domain` принадлежит только хосту
   `example.ru`;
 - подложить свою CSRF-cookie для `example.ru` не может, если у неё префикс `__Host-`;
-- его запрос несёт `Origin: https://avatars.example.ru` и `Sec-Fetch-Site: same-site` —
-  проверка `Origin` его отклонит.
+- его запрос несёт `Origin: https://avatars.example.ru` и `Sec-Fetch-Site: same-site`. Там,
+  где стоит проверка `Origin`, его отклонит она; на остальных ручках остановит Double Submit:
+  без токена запрос не пройдёт, а заголовок `X-CSRF-Token` с чужого origin не пропустит
+  preflight.
 
 Это и отсекают `Origin` и `__Host-`: XSS на поддомене остаётся проблемой поддомена и не
 становится проблемой основного приложения.
@@ -285,6 +287,11 @@ var allowedOrigins = map[string]bool{"https://example.ru": true} // из пер�
 // Порядок: originCheck на login, register, refresh, затем csrfMiddleware.
 func originCheck(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet, http.MethodHead, http.MethodOptions:
+			next.ServeHTTP(w, r) // проверяем только изменяющие методы
+			return
+		}
 		// Один origin: свой фронт всегда same-origin. При отдельном API эту проверку уберите.
 		if site := r.Header.Get("Sec-Fetch-Site"); site != "" && site != "same-origin" {
 			http.Error(w, "cross-origin request", http.StatusForbidden)
@@ -389,9 +396,17 @@ func validCSRF(sessionKey, header, cookie string) bool {
 register проверяют обычный Double Submit (плюс рекомендуемую проверку `Origin`), а после входа
 сервер выдаёт новый, уже подписанный токен.
 
+Где стоит проверка подписи. Ей нужен id сессии, поэтому она идёт **после** разбора сессии:
+access-токена в варианте A, `__Host-session` в варианте C. Порядок «CSRF → access» из
+[variant-a.md](variant-a.md#бэк) подходит для минимума, где сравниваются две копии и id не
+нужен. С подписью порядок такой: CSRF-сравнение копий → разбор сессии → проверка подписи. На
+`/api/v1/auth/refresh` access может быть уже истёкшим, поэтому id сессии берут из
+refresh-записи в БД, а подпись проверяют внутри обработчика refresh.
+
 **Проверка `Origin` / `Sec-Fetch-Site` на всех изменяющих запросах** — тот же `originCheck`,
-но на все `POST`, `PUT`, `PATCH`, `DELETE` (`GET` и `HEAD` он пропускает: переход по ссылке
-приходит с `Sec-Fetch-Site: none` или `cross-site`, и его отклонять нельзя). Запрос с чужого
+но подключённый ко всем ручкам. `GET`, `HEAD` и `OPTIONS` он пропускает (первый `switch` в
+примере): переход по ссылке приходит с `Sec-Fetch-Site: none` или `cross-site`, и его
+отклонять нельзя, а preflight обрабатывает CORS. Запрос с чужого
 origin или поддомена отсекается до проверки токена, даже если в ней ошибка.
 
 **Новый CSRF-токен при login, refresh, logout.** Token fixation — злоумышленник заранее
@@ -501,14 +516,17 @@ refresh, повтор, `401`, refresh… (в `pitfalls.md` это «бескон
 
 ## Как проверить
 
-Плейсхолдеры: `{access}` — значение `access_token` (или `__Host-session` в варианте C),
-`{csrf}` — значение `__Host-csrf` из DevTools → Application → Cookies.
+Значения берите в DevTools → Application → Cookies. Плейсхолдеры:
+
+- `{auth-cookie}` — авторизационная cookie целиком, с именем: в варианте A
+  `access_token={access}`, в варианте C `__Host-session={session}`;
+- `{csrf}` — значение `__Host-csrf`.
 
 Без `X-CSRF-Token` — `403`:
 
 ```bash
 curl -i -X POST https://example.ru/api/v1/files/42/blocks \
-  -b 'access_token={access}; __Host-csrf={csrf}' \
+  -b '{auth-cookie}; __Host-csrf={csrf}' \
   -H 'Content-Type: application/json' -d '{"text":"проверка"}'
 ```
 
@@ -516,7 +534,7 @@ curl -i -X POST https://example.ru/api/v1/files/42/blocks \
 
 ```bash
 curl -i -X POST https://example.ru/api/v1/files/42/blocks \
-  -b 'access_token={access}; __Host-csrf={csrf}' \
+  -b '{auth-cookie}; __Host-csrf={csrf}' \
   -H 'X-CSRF-Token: {csrf}' \
   -H 'Content-Type: application/json' -d '{"text":"проверка"}'
 ```
@@ -537,8 +555,11 @@ curl -i -X POST https://example.ru/api/v1/auth/login \
   -H 'Content-Type: application/json' -d '{"login":"alice","password":"secret"}'
 ```
 
-`GET` без токена проходит: `curl -i https://example.ru/api/v1/files -b 'access_token={access}'`
-→ `200`.
+`GET` без токена проходит (`200`):
+
+```bash
+curl -i https://example.ru/api/v1/files -b '{auth-cookie}'
+```
 
 ## Источники
 
