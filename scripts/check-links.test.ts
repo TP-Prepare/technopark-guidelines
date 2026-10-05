@@ -40,6 +40,9 @@ test("checkLinks: missing anchor in другом файле is reported with lin
 test("githubSlug: emphasis markers stripped, snake_case kept", () => {
   expect(githubSlug("_курсив_ и **жирный**")).toBe("курсив-и-жирный");
   expect(githubSlug("snake_case_name")).toBe("snake_case_name");
+  expect(githubSlug("Set-Cookie и __Host-")).toBe("set-cookie-и-__host-");
+  expect(githubSlug("Префикс __Secure- и __Host-")).toBe("префикс-__secure--и-__host-");
+  expect(githubSlug("Кука `__Host-csrf`")).toBe("кука-__host-csrf");
 });
 
 test("markdownFiles: only README/CLAUDE and rk*, excludes fixtures and tool dirs", () => {

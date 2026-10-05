@@ -15,13 +15,24 @@ export function markdownFiles(root = "."): string[] {
   return [...new Set(found)].filter((name) => !EXCLUDED.some((prefix) => name.startsWith(prefix))).sort();
 }
 
+// Выделение снимается только парой, как в CommonMark: открывающий маркер не перед пробелом,
+// закрывающий не после пробела, подчёркивания не внутри слова. Одиночные маркеры остаются.
+const EMPHASIS_PAIRS: RegExp[] = [
+  /\*\*(?=\S)(.+?)(?<=\S)\*\*/gu,
+  /(?<![\p{L}\p{N}])__(?=\S)(.+?)(?<=\S)__(?![\p{L}\p{N}])/gu,
+  /\*(?=\S)(.+?)(?<=\S)\*/gu,
+  /(?<![\p{L}\p{N}])_(?=\S)(.+?)(?<=\S)_(?![\p{L}\p{N}])/gu,
+];
+
+function stripEmphasis(text: string): string {
+  return text
+    .split(/(`[^`]*`)/)
+    .map((part, index) => (index % 2 === 1 ? part : EMPHASIS_PAIRS.reduce((acc, re) => acc.replace(re, "$1"), part)))
+    .join("");
+}
+
 export function githubSlug(heading: string): string {
-  return heading
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .trim()
-    .toLowerCase()
-    .replace(/(^|[^\p{L}\p{N}_])_+(?=[\p{L}\p{N}])/gu, "$1")
-    .replace(/(?<=[\p{L}\p{N}])_+(?=$|[^\p{L}\p{N}_])/gu, "")
+  return stripEmphasis(heading.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").trim().toLowerCase())
     .replace(/[^\p{L}\p{N} _-]/gu, "")
     .replaceAll(" ", "-");
 }
