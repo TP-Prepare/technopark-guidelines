@@ -1,0 +1,16 @@
+{
+  "entities": [
+    { "tag": "Group", "id": "servers", "x": 0, "y": 0, "width": 760, "height": 220, "color": "green", "title": { "text": "Один site: example.ru" } },
+    { "tag": "Icon", "id": "app", "x": 40, "y": 60, "width": 100, "height": 100, "icon": "globe", "containerId": "servers", "texts": [{ "text": "https://example.ru" }] },
+    { "tag": "Icon", "id": "avatars-host", "x": 240, "y": 60, "width": 100, "height": 100, "icon": "image", "containerId": "servers", "texts": [{ "text": "https://avatars.example.ru" }] },
+    { "tag": "Icon", "id": "api-host", "x": 620, "y": 60, "width": 100, "height": 100, "icon": "server", "containerId": "servers", "texts": [{ "text": "https://api.example.ru" }] },
+    { "tag": "Textbox", "id": "origins-note", "x": 0, "y": 240, "width": 300, "text": "Три разных origin, один site" },
+    { "tag": "Group", "id": "attacker", "x": 1180, "y": 0, "width": 300, "height": 220, "color": "red", "title": { "text": "Другой site: evil.example" } },
+    { "tag": "Icon", "id": "evil", "x": 1280, "y": 60, "width": 100, "height": 100, "icon": "skull", "containerId": "attacker", "texts": [{ "text": "https://evil.example" }] },
+    { "tag": "Legend", "id": "legend", "x": 1520, "y": 0, "width": 340, "entries": [{ "text": "Наши серверы", "color": "#30a050" }, { "text": "Злоумышленник", "color": "#bd413a" }, { "text": "Атака", "color": "#bd413a" }, { "text": "Прочие связи", "color": "#1c1c1c" }] }
+  ],
+  "connections": [
+    { "tag": "Relationship", "from": "avatars-host", "to": "api-host", "label": "same-site: Lax-cookie уходит" },
+    { "tag": "Relationship", "from": "evil", "to": "api-host", "label": "cross-site: Lax-cookie на fetch/POST не уходит", "color": "red", "lineStyle": "dotted" }
+  ]
+}
