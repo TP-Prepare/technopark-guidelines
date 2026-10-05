@@ -42,7 +42,7 @@
 |---|---|---|---|
 | Схема | access и refresh в HttpOnly-cookie + CSRF | access (Bearer) в памяти JS + refresh в HttpOnly-cookie | `session_id` в HttpOnly-cookie, сессии в Redis/БД + CSRF |
 | Что получает XSS | действия от имени пользователя, пока вкладка открыта; токен унести нельзя | то же + может унести access-токен и пользоваться им со своей машины до истечения | как в A |
-| CSRF | нужен | только для refresh-cookie: её закрывают `Path` и `SameSite`; от login CSRF — проверка `Origin` / `Sec-Fetch-Site` (настойчиво рекомендуется) | нужен |
+| CSRF | нужен | только для refresh-cookie: её закрывают `Path` и `SameSite`; от login CSRF — проверка `Origin` / `Sec-Fetch-Site` и только `Content-Type: application/json` (настойчиво рекомендуется) | нужен |
 | Отзыв | refresh — сразу; access — по истечении TTL | как в A | сразу |
 | Работа фронта | `credentials: 'include'`, CSRF-заголовок, повтор после 401 | хранить токен в памяти, ставить `Authorization`, повтор после 401 | `credentials: 'include'`, CSRF-заголовок |
 

@@ -254,9 +254,11 @@ base64url — кодирование, а не шифрование: нагруз
   базе становится дорогим. SHA-256, MD5 и SHA-1 для паролей не подходят — они быстрые и
   позволяют перебирать огромное число вариантов на GPU. Параметры по OWASP: argon2id — не
   меньше 19 MiB памяти, 2 итерации, параллелизм 1; bcrypt — work factor 10 или больше.
-- **Соль генерирует библиотека.** bcrypt и argon2id сами создают случайную соль и сохраняют её
-  внутри строки хеша. Одинаковые пароли дают разные хеши, радужные таблицы не работают.
-  Отдельное поле для соли не нужно.
+- **Соль случайная для каждого пароля.** bcrypt сам создаёт соль и сохраняет её внутри строки
+  хеша. У argon2id в Go (`golang.org/x/crypto/argon2`) функция `IDKey` принимает соль готовой:
+  её генерирует сервер из `crypto/rand` и хранит рядом с хешем — обычно в одной строке вида
+  `$argon2id$v=19$m=…,t=…,p=…$соль$хеш`, можно и в отдельной колонке. Одинаковые пароли дают
+  разные хеши, радужные таблицы не работают.
 - **Длина ограничена сверху.** bcrypt учитывает только первые 72 байта пароля (кириллическая
   буква в UTF-8 — 2 байта). Длинный пароль отклоняйте с понятной ошибкой, а не обрезайте молча.
   Верхний предел нужен и с argon2id: сервер не должен принимать пароль любого размера.
@@ -295,6 +297,8 @@ base64url — кодирование, а не шифрование: нагруз
   password spraying, лимиты по IP и их ограничения
 - OWASP: [Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html) —
   argon2id, bcrypt, соль, лимит 72 байта
+- Go: [golang.org/x/crypto/argon2](https://pkg.go.dev/golang.org/x/crypto/argon2) —
+  `IDKey` принимает соль от вызывающего кода и возвращает только байты ключа
 - OWASP: [HTML5 Security Cheat Sheet, Local Storage](https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html#local-storage) —
   почему не хранить идентификаторы сессии в `localStorage`
 - OWASP: [JSON Web Token Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_Cheat_Sheet.html) —
