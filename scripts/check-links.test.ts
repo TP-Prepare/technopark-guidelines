@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { expect, test } from "bun:test";
 import { checkLinks, extractLinks, githubSlug, headingAnchors, markdownFiles } from "./check-links.ts";
 
@@ -34,6 +37,20 @@ test("checkLinks: missing anchor in другом файле is reported with lin
   ]);
 });
 
-test("markdownFiles: excludes fixtures", () => {
-  expect(markdownFiles().some((f) => f.startsWith("scripts/"))).toBe(false);
+test("githubSlug: emphasis markers stripped, snake_case kept", () => {
+  expect(githubSlug("_курсив_ и **жирный**")).toBe("курсив-и-жирный");
+  expect(githubSlug("snake_case_name")).toBe("snake_case_name");
+});
+
+test("markdownFiles: only README/CLAUDE and rk*, excludes fixtures and tool dirs", () => {
+  const root = mkdtempSync(join(tmpdir(), "mdfiles-"));
+  try {
+    for (const f of ["README.md", "rk1/a.md", "rk1/sub/b.md", "scripts/fixtures/x.md", "docs/y.md", "node_modules/z.md", ".claude/w.md"]) {
+      mkdirSync(dirname(join(root, f)), { recursive: true });
+      writeFileSync(join(root, f), "# x\n");
+    }
+    expect(markdownFiles(root)).toEqual(["README.md", "rk1/a.md", "rk1/sub/b.md"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

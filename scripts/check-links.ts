@@ -20,6 +20,8 @@ export function githubSlug(heading: string): string {
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
     .trim()
     .toLowerCase()
+    .replace(/(^|[^\p{L}\p{N}_])_+(?=[\p{L}\p{N}])/gu, "$1")
+    .replace(/(?<=[\p{L}\p{N}])_+(?=$|[^\p{L}\p{N}_])/gu, "")
     .replace(/[^\p{L}\p{N} _-]/gu, "")
     .replaceAll(" ", "-");
 }
