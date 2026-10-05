@@ -31,12 +31,29 @@ Auth-middleware кладёт id пользователя в контекст з�
 `X-User-Id`. Всё, что пришло в запросе, клиент мог подставить сам.
 
 ```go
+type ctxKey struct{}
+
+var userIDKey ctxKey // свой тип ключа: чужой пакет не перезапишет значение
+
+// В auth-middleware: в контекст кладём int64. В JWT `sub` — строка, её разбирают сразу:
+// id, err := strconv.ParseInt(claims.Subject, 10, 64); ошибка — 401.
+// ctx := context.WithValue(r.Context(), userIDKey, id)
+
 // userIDFrom достаёт id пользователя, который положил auth-middleware.
-// Если ручку забыли обернуть в middleware, будет паника — ошибку видно сразу.
 func userIDFrom(ctx context.Context) int64 {
-	return ctx.Value(userIDKey).(int64)
+	id, ok := ctx.Value(userIDKey).(int64)
+	if !ok {
+		// Ручку забыли обернуть в auth-middleware — это ошибка в коде, а не запрос клиента.
+		panic("userIDFrom: no user id in context")
+	}
+	return id
 }
 ```
+
+Тип в контексте один на весь проект — `int64`, — поэтому приведение `.(int64)` в обработчиках
+не падает. Паника возможна, только если ручку не обернули в auth-middleware. Такую ошибку
+видно на первом же запросе: `net/http` перехватит панику, запишет стек в лог и оборвёт
+запрос, а не отдаст чужие данные.
 
 Защищённые маршруты на фронте — тоже не авторизация. Редирект на `/login`, скрытая кнопка
 «Удалить» у чужого файла, неактивное поле — это удобство для пользователя. Запрос к API можно
@@ -170,7 +187,7 @@ sequenceDiagram
 
 ```go
 type createBlockRequest struct {
-	Type string `json:"type"`
+	Type string `json:"type"` // необязательное, по умолчанию "text"
 	Text string `json:"text"`
 }
 
@@ -186,6 +203,9 @@ func createBlock(w http.ResponseWriter, r *http.Request) {
 	var req createBlockRequest
 	if !decodeJSON(w, r, &req) { // лимит размера и строгий JSON — ниже, в «Серверной валидации»
 		return
+	}
+	if req.Type == "" {
+		req.Type = "text"
 	}
 	if !blockTypes[req.Type] {
 		http.Error(w, "type: text, heading или todo", http.StatusBadRequest)
@@ -234,9 +254,22 @@ WHERE b.id = $1
   AND f.owner_id = $3;
 ```
 
-Страница файла (`GET /api/v1/files/{id}` вместе с блоками) — то же самое: сначала файл с
-условием на владельца, затем блоки по `file_id` этого файла. Или один запрос с `JOIN files`
-и условием `f.owner_id = $2`.
+Страница файла (`GET /api/v1/files/{id}` вместе с блоками) — то же самое. Проще в два шага:
+сначала файл с условием на владельца (нет строки — `404`), затем блоки по `file_id` этого
+файла. Если хочется одним запросом, выбирайте **от файла**, а блоки присоединяйте через
+`LEFT JOIN`:
+
+```sql
+SELECT f.id, f.title, b.id, b.type, b.text
+FROM files f
+LEFT JOIN blocks b ON b.file_id = f.id
+WHERE f.id = $1 AND f.owner_id = $2
+ORDER BY b.id;
+```
+
+Ноль строк — файла нет или он чужой (`404`). Свой пустой файл даёт одну строку с `NULL` в
+колонках блока. Запрос «от блоков» (`FROM blocks JOIN files`) этого не различит: и для
+своего пустого файла, и для чужого он вернёт ноль строк.
 
 Сводка по ручкам:
 
@@ -426,10 +459,11 @@ DevTools. Поэтому сервер проверяет всё заново, к
   `*http.MaxBytesError`; без лимита клиент может прислать тело в гигабайт.
 - **Лишние поля.** `DisallowUnknownFields` превращает неизвестный ключ в ошибку. Опечатка
   фронта (`titel` вместо `title`) сразу видна, а не превращается в «поле молча пустое».
-- **Одно значение.** `Decode` читает одно JSON-значение; если после него в теле что-то есть,
-  это ошибка клиента.
+- **Одно значение.** `Decode` читает одно JSON-значение. Если после него в теле есть что-то,
+  кроме пробелов, это ошибка клиента: второй `Decode` должен вернуть `io.EOF`.
 
 ```go
+// Пакеты: encoding/json, errors, io, net/http.
 const maxBody = 1 << 20 // 1 MiB; для загрузки картинок — отдельная ручка со своим лимитом
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
@@ -445,7 +479,8 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 		}
 		return false
 	}
-	if dec.More() { // после объекта есть ещё данные: {"a":1}{"b":2}
+	// После объекта — только пробелы: {"a":1}{"b":2}, {"a":1}} и {"a":1}, отклоняются.
+	if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return false
 	}
@@ -482,11 +517,14 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 байта.
 
 Это компромисс, а не единственно верное правило. OWASP советует разрешать в паролях любые
-символы, включая Unicode и пробелы, и не ставить верхний предел ниже 64 символов. Если команда
-так и делает, сервер проверяет длину в байтах (`len(password) > 72` в Go), а форма может
-подсказать заранее (`new TextEncoder().encode(password).length`). Минимальную длину команда
-тоже выбирает сама; OWASP считает слабыми пароли короче 8 символов при втором факторе и короче
-15 без него.
+символы, включая Unicode и пробелы, и не ставить верхний предел ниже 64 символов. С bcrypt
+это не сочетается: 72 байта — всего 36 русских букв, меньше 64. Если команда хочет длинные
+пароли на любом языке, ей подходит argon2id с пределом побольше (например, 256 байт). Сервер
+тогда проверяет длину в байтах (`len(password) > 256` в Go), а форма может подсказать заранее
+(`new TextEncoder().encode(password).length`).
+
+Минимальную длину команда тоже выбирает сама. 8 символов в примере — минимум курса; OWASP без
+второго фактора считает слабыми пароли короче 15 символов.
 
 Какое бы правило ни выбрала команда, его применяет **сервер**. Если ограничение есть только в
 форме, `curl` с паролем в 200 символов его обойдёт.
@@ -550,7 +588,7 @@ curl -i https://example.ru/api/v1/files/42 -b '{bob-auth}'
 ```bash
 curl -i -X POST https://example.ru/api/v1/files/42/blocks \
   -b '{bob-auth}; __Host-csrf={csrf}' -H 'X-CSRF-Token: {csrf}' \
-  -H 'Content-Type: application/json' -d '{"type":"text","text":"проверка"}'
+  -H 'Content-Type: application/json' -d '{"text":"проверка"}'
 ```
 
 Список с чужим `user_id` — только файлы Боба (или `400`, если параметр запрещён):
