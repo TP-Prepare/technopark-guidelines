@@ -1,0 +1,8 @@
+{
+  "roles": { "rough": "ShantellSans", "clean": "Inter", "mono": "JetBrainsMono" },
+  "faces": [
+    { "kind": "file", "family": "ShantellSans", "path": "./node_modules/@eraserlabs/diagrams/fonts/ShantellSans.var.woff2", "format": "woff2", "weight": "300 800", "inline": true },
+    { "kind": "file", "family": "Inter", "path": "./node_modules/@eraserlabs/diagrams/fonts/Inter.var.woff2", "format": "woff2", "weight": "100 900", "inline": true },
+    { "kind": "file", "family": "JetBrainsMono", "path": "./node_modules/@eraserlabs/diagrams/fonts/JetBrainsMono-Regular.woff2", "format": "woff2", "inline": true }
+  ]
+}
