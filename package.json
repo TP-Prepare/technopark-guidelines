@@ -21,7 +21,8 @@
     "icons": "bun scripts/fetch-icons.ts",
     "site:dev": "vitepress dev",
     "site:build": "vitepress build",
-    "site:preview": "vitepress preview"
+    "site:preview": "vitepress preview",
+    "site:check": "bun scripts/check-site.ts"
   },
   "devDependencies": {
     "@eraserlabs/diagrams-cli": "0.1.0",
