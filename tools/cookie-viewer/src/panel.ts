@@ -1,6 +1,6 @@
 /** Вкладка «Все cookie»: адрес страницы → домены → разрешение → cookie. Только чтение. */
-import { type CookieRow, defaultDomain, domainsFor, originsFor, sortCookies } from './cookies.ts';
-import { cookieTable, emptyScreen, fillDomains, notHttpScreen, permissionScreen, rowKey } from './view.ts';
+import { accessErrorLine, type CookieRow, defaultDomain, domainsFor, originsFor, readErrorLine, sortCookies } from './cookies.ts';
+import { cookieTable, emptyScreen, errorScreen, fillDomains, notHttpScreen, permissionScreen, rowKey } from './view.ts';
 
 const REFRESH_INTERVAL_MS = 300;
 
@@ -11,7 +11,7 @@ const showValues = byId<HTMLInputElement>('show-values');
 const content = byId<HTMLElement>('content');
 
 /** Что сейчас на экране: таблица (или «нет cookie») обновляется сама, остальные экраны — нет. */
-type Screen = 'none' | 'not-http' | 'permission' | 'cookies';
+type Screen = 'none' | 'not-http' | 'permission' | 'cookies' | 'error';
 
 const state = {
   domain: '',
@@ -105,11 +105,19 @@ function toggleValue(row: CookieRow): void {
   renderCookies();
 }
 
-/** Запрос доступа — синхронно в обработчике клика «Разрешить». После отказа остаётся тот же экран. */
+/**
+ * Запрос доступа — синхронно в обработчике клика «Разрешить» (иначе пропадёт user gesture).
+ * Отказ Chrome (reject) показывается под кнопкой, если экран за это время не сменился.
+ */
 function requestAccess(): void {
-  chrome.permissions.request({ origins: originsFor(state.domain) }).then(
+  const domain = state.domain;
+  const requested = generation;
+  chrome.permissions.request({ origins: originsFor(domain) }).then(
     () => refresh(),
-    (error: unknown) => console.error(error),
+    (error: unknown) => {
+      if (requested !== generation || domain !== state.domain) return;
+      show('permission', permissionScreen(domain, requestAccess, accessErrorLine(error)));
+    },
   );
 }
 
@@ -117,16 +125,21 @@ async function refresh(): Promise<void> {
   const domain = state.domain;
   if (domain === '') return;
   const current = ++generation;
-  const granted = await chrome.permissions.contains({ origins: originsFor(domain) });
-  if (current !== generation) return;
-  if (!granted) {
-    show('permission', permissionScreen(domain, requestAccess));
-    return;
+  try {
+    const granted = await chrome.permissions.contains({ origins: originsFor(domain) });
+    if (current !== generation) return;
+    if (!granted) {
+      show('permission', permissionScreen(domain, requestAccess));
+      return;
+    }
+    const cookies = await chrome.cookies.getAll({ domain });
+    if (current !== generation) return;
+    state.rows = sortCookies(cookies.map(toRow));
+    renderCookies();
+  } catch (error) {
+    if (current !== generation) return;
+    show('error', errorScreen(readErrorLine(error)));
   }
-  const cookies = await chrome.cookies.getAll({ domain });
-  if (current !== generation) return;
-  state.rows = sortCookies(cookies.map(toRow));
-  renderCookies();
 }
 
 /** Автообновление: не чаще раза в 300 мс и только когда таблица уже на экране. */

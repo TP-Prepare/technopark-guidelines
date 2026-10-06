@@ -85,3 +85,20 @@ export function sortCookies(rows: CookieRow[]): CookieRow[] {
 export function isNarrowPath(row: CookieRow): boolean {
   return row.path !== '/';
 }
+
+/** Текст ошибки из отказа chrome.*: `Error.message` или строка. */
+export function errorMessage(error: unknown): string {
+  if (error instanceof Error && error.message !== '') return error.message;
+  if (typeof error === 'string' && error !== '') return error;
+  return 'неизвестная ошибка';
+}
+
+/** Строка под кнопкой «Разрешить», когда Chrome отклонил запрос доступа. */
+export function accessErrorLine(error: unknown): string {
+  return `Chrome не выдал доступ: ${errorMessage(error)}. Попробуйте ещё раз или выдайте доступ в chrome://extensions → «Сведения» → «Доступ к сайтам».`;
+}
+
+/** Строка экрана, когда не удалось проверить доступ или прочитать cookie. */
+export function readErrorLine(error: unknown): string {
+  return `Не удалось прочитать cookie: ${errorMessage(error)}. Нажмите «Обновить», чтобы повторить.`;
+}

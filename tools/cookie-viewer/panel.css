@@ -9,6 +9,7 @@
   --accent: #1a73e8;
   --accent-fg: #ffffff;
   --code-bg: #f1f3f4;
+  --error: #c5221f;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,6 +23,7 @@
     --accent: #8ab4f8;
     --accent-fg: #202124;
     --code-bg: #303134;
+    --error: #f28b82;
   }
 }
 
@@ -60,6 +62,10 @@ main {
 
 .message {
   margin: 8px 0;
+}
+
+.message.error {
+  color: var(--error);
 }
 
 .message code {

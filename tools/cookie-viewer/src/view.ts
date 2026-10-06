@@ -46,14 +46,20 @@ export function notHttpScreen(): HTMLElement {
 }
 
 /** «Расширению нужен доступ к cookie `*.example.ru`» и «Разрешить»; для localhost и IP — сам хост. */
-export function permissionScreen(domain: string, onAllow: () => void): HTMLElement {
+export function permissionScreen(domain: string, onAllow: () => void, errorLine = ''): HTMLElement {
   const scope = originsFor(domain).length > 1 ? `*.${domain}` : domain;
   const allow = el('button', 'Разрешить', 'allow');
   allow.type = 'button';
   allow.addEventListener('click', onAllow);
   const box = el('section');
   box.append(message('Расширению нужен доступ к cookie ', scope), allow);
+  if (errorLine !== '') box.append(el('p', errorLine, 'message error'));
   return box;
+}
+
+/** Не удалось проверить доступ или прочитать cookie. */
+export function errorScreen(errorLine: string): HTMLElement {
+  return el('p', errorLine, 'message error');
 }
 
 export function emptyScreen(domain: string): HTMLElement {

@@ -1,11 +1,13 @@
 import { expect, test } from 'bun:test';
 import {
+  accessErrorLine,
   defaultDomain,
   domainsFor,
   formatExpiry,
   isNarrowPath,
   maskValue,
   originsFor,
+  readErrorLine,
   sortCookies,
   type CookieRow,
 } from './cookies.ts';
@@ -69,4 +71,15 @@ test('domainsFor: нормализация хоста', () => {
 test('originsFor: нормализация хоста', () => {
   expect(originsFor('localhost:5173')).toEqual(['*://localhost/*']);
   expect(originsFor('example.ru.')).toEqual(['*://*.example.ru/*', '*://example.ru/*']);
+});
+
+test('accessErrorLine: текст из задания и сообщение ошибки', () => {
+  expect(accessErrorLine(new Error('This function must be called during a user gesture'))).toBe(
+    'Chrome не выдал доступ: This function must be called during a user gesture. Попробуйте ещё раз или выдайте доступ в chrome://extensions → «Сведения» → «Доступ к сайтам».',
+  );
+  expect(accessErrorLine('boom')).toContain('Chrome не выдал доступ: boom.');
+  expect(accessErrorLine(undefined)).toContain('неизвестная ошибка');
+});
+test('readErrorLine: сообщение ошибки', () => {
+  expect(readErrorLine(new Error('x'))).toBe('Не удалось прочитать cookie: x. Нажмите «Обновить», чтобы повторить.');
 });
