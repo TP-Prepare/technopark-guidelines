@@ -77,11 +77,14 @@ bun install
 
 ```bash
 bun run typecheck && bun run test && bun run validate && bun run check \
-  && bun run fresh && bun run links && bun run mermaid && bun run site:build && bun run site:check
+  && bun run fresh && bun run links && bun run mermaid && bun run ext:build && bun run ext:zip \
+  && bun run site:build && bun run site:check
 ```
 
 `links` проверяет относительные ссылки и якоря между `.md`, `mermaid` — что каждая диаграмма
-собирается. `site:build` собирает сайт, `site:check` проверяет собранное: ссылки, якоря и картинки.
+собирается. `ext:build` собирает расширение в `tools/cookie-viewer/dist/`, `ext:zip` кладёт архив в
+`public/cookie-viewer.zip` (сайт отдаёт его по адресу `/cookie-viewer.zip`). `site:build` собирает
+сайт, `site:check` проверяет собранное: ссылки, якоря и картинки, в том числе ссылку на архив.
 
 Сайт на VitePress. Локально:
 
@@ -98,6 +101,12 @@ bun run site:preview  # http://localhost:4173/technopark-guidelines/, после
    Элемент `pages` — имя страницы, `{ page, text }` (короткая подпись в меню) или группа
    `{ text, link?, items }` (один уровень; `link` вроде `README#якорь`).
 3. Добавьте строку в таблицу «Рубежные контроли» в этом файле.
+
+Расширение «Все cookie» для DevTools лежит в `tools/cookie-viewer/` (TypeScript, Manifest V3),
+страницы раздела «Инструменты» — `tools/*.md`. Для разработки выполните `bun run ext:build`,
+откройте `chrome://extensions`, включите режим разработчика и загрузите распакованное
+расширение из `tools/cookie-viewer/dist`; после правок снова `bun run ext:build` и «Обновить» на
+карточке расширения. В `tools/cookie-viewer/` нет `.md`: иначе файл станет страницей сайта.
 
 Папка, которой нет в реестре, на сайт не попадает: черновики можно держать в `main`. Страница,
 не перечисленная в `pages`, роняет `bun test`.
