@@ -1,0 +1,29 @@
+{
+  "name": "technopark-guidelines",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12",
+    "bun": ">=1.3"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc",
+    "validate": "bun scripts/eraser.ts validate",
+    "check": "bun scripts/check-colors.ts",
+    "warm": "bun scripts/warm-icons.ts",
+    "render": "bun scripts/docker.ts render",
+    "render:native": "bun scripts/eraser.ts render -f png",
+    "fresh": "bun scripts/freshness.ts",
+    "links": "bun scripts/check-links.ts",
+    "mermaid": "bun scripts/docker.ts mermaid",
+    "mermaid:native": "bun scripts/check-mermaid.ts",
+    "icons": "bun scripts/fetch-icons.ts"
+  },
+  "devDependencies": {
+    "@eraserlabs/diagrams-cli": "0.1.0",
+    "@mermaid-js/mermaid-cli": "11.17.0",
+    "@types/bun": "1.4.2",
+    "typescript": "7.0.2"
+  }
+}
