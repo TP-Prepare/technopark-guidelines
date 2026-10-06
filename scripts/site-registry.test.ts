@@ -36,3 +36,42 @@ test('pageTitle: markdown markup removed', () => {
   expect(pageTitle('# Язык C# ##')).toBe('Язык C#');
   expect(pageTitle('# snake_case_name и 2 * 3')).toBe('snake_case_name и 2 * 3');
 });
+
+const grp = (over: object = {}) => ({ text: 'Группа', link: 'README#варианты-сессии', items: ['a'], ...over });
+const withPages = (pages: Rk['pages']): Rk[] => [{ ...ok[0]!, pages }];
+
+test('sidebars: group with collapsed false and anchor link', () =>
+  expect(sidebars(withPages([{ page: 'README', text: 'Обзор' }, grp()]), root)['/rk1/']![0]!.items).toEqual([
+    { text: 'Обзор', link: '/rk1/' },
+    {
+      text: 'Группа',
+      link: '/rk1/#варианты-сессии',
+      collapsed: false,
+      items: [{ text: 'Страница A', link: '/rk1/a' }],
+    },
+  ]));
+test('sidebars: group without link has no link key', () =>
+  expect(sidebars(withPages(['README', grp({ link: undefined })]), root)['/rk1/']![0]!.items[1]).toEqual({
+    text: 'Группа',
+    collapsed: false,
+    items: [{ text: 'Страница A', link: '/rk1/a' }],
+  }));
+test('sidebars: short label escaped once, also in group', () => {
+  const items = sidebars(withPages([{ page: 'README', text: 'A <b>' }, grp({ text: 'G & H', items: [{ page: 'a', text: 'x "y"' }] })]), root)['/rk1/']![0]!.items;
+  expect(items[0]!.text).toBe('A &lt;b&gt;');
+  expect(items[1]).toMatchObject({ text: 'G &amp; H', items: [{ text: 'x &quot;y&quot;' }] });
+});
+test('registryProblems: grouped pages count as in pages', () =>
+  expect(registryProblems(withPages(['README', grp()]), root)).toEqual([]));
+test('registryProblems: README may be given as object', () =>
+  expect(registryProblems(withPages([{ page: 'README', text: 'Обзор' }, 'a']), root)).toEqual([]));
+test('registryProblems: empty group', () =>
+  expect(registryProblems(withPages(['README', 'a', grp({ items: [], link: undefined })]), root)).toEqual(['rk1: группа «Группа» пустая']));
+test('registryProblems: nested group', () =>
+  expect(registryProblems(withPages(['README', grp({ link: undefined, items: ['a', grp({ link: undefined, items: [] })] })] as Rk['pages']), root)).toContain('rk1: группа «Группа» вложена в группу'));
+test('registryProblems: page twice', () =>
+  expect(registryProblems(withPages(['README', 'a', grp()]), root)).toEqual(['rk1/a.md: в pages дважды']));
+test('registryProblems: missing group anchor', () =>
+  expect(registryProblems(withPages(['README', grp({ link: 'README#нет' })]), root)).toEqual(['rk1: у группы «Группа» нет якоря #нет']));
+test('registryProblems: missing page inside group', () =>
+  expect(registryProblems(withPages(['README', 'a', grp({ items: ['zz'] })]), root)).toContain('rk1/zz.md: файла нет'));

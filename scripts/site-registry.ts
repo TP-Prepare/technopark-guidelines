@@ -1,10 +1,24 @@
 // Проверка реестра РК и построение меню сайта. Спека: docs/superpowers/specs/2026-10-06-vitepress-site-design.md §3.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Rk } from "../.vitepress/rk.ts";
+import type { PageGroup, PageRef, Rk } from "../.vitepress/rk.ts";
+import { headingAnchors } from "./check-links.ts";
 import { stripEmphasis } from "./slug.ts";
 
 type Link = { text: string; link: string };
+type SidebarItem = Link | { text: string; link?: string; collapsed: false; items: Link[] };
+
+const isGroup = (entry: PageRef | PageGroup): entry is PageGroup => typeof entry !== "string" && "items" in entry;
+// Группа внутри items — ошибка реестра; тип её не допускает, но реестр пишут руками.
+const isNested = (item: PageRef): boolean => isGroup(item as PageRef | PageGroup);
+const pageName = (ref: PageRef): string => (typeof ref === "string" ? ref : ref.page);
+
+// Страницы РК в порядке меню, группы раскрыты; вложенные группы сюда не попадают.
+function flatPages(rk: Rk): string[] {
+  return rk.pages.flatMap((entry) =>
+    isGroup(entry) ? entry.items.filter((item) => !isNested(item)).map(pageName) : [pageName(entry)],
+  );
+}
 
 function plainTitle(raw: string): string {
   return stripEmphasis(raw.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1"))
@@ -57,8 +71,32 @@ export function registryProblems(rks: Rk[], root: string): string[] {
   for (const rk of rks) {
     if (seen.has(rk.dir)) continue;
     seen.add(rk.dir);
-    if (rk.pages[0] !== "README") problems.push(`${rk.dir}: pages должен начинаться с README`);
-    for (const page of rk.pages) {
+    const first = rk.pages[0];
+    if (first === undefined || isGroup(first) || pageName(first) !== "README") {
+      problems.push(`${rk.dir}: pages должен начинаться с README`);
+    }
+    for (const entry of rk.pages) {
+      if (!isGroup(entry)) continue;
+      if (entry.items.length === 0) problems.push(`${rk.dir}: группа «${entry.text}» пустая`);
+      if (entry.items.some((item) => isNested(item))) {
+        problems.push(`${rk.dir}: группа «${entry.text}» вложена в группу`);
+      }
+      if (entry.link !== undefined) {
+        const [target = "", anchor = ""] = entry.link.split("#");
+        const file = join(root, rk.dir, `${target}.md`);
+        if (anchor && existsSync(file) && !headingAnchors(readFileSync(file, "utf8")).has(anchor)) {
+          problems.push(`${rk.dir}: у группы «${entry.text}» нет якоря #${anchor}`);
+        }
+      }
+    }
+    const pages = flatPages(rk);
+    const counted = new Set<string>();
+    for (const page of pages) {
+      if (counted.has(page)) {
+        problems.push(`${rk.dir}/${page}.md: в pages дважды`);
+        continue;
+      }
+      counted.add(page);
       const file = join(root, rk.dir, `${page}.md`);
       if (!existsSync(file)) {
         problems.push(`${rk.dir}/${page}.md: файла нет`);
@@ -68,7 +106,7 @@ export function registryProblems(rks: Rk[], root: string): string[] {
     }
     if (existsSync(join(root, rk.dir))) {
       for (const page of pageFiles(root, rk.dir)) {
-        if (!rk.pages.includes(page)) problems.push(`${rk.dir}/${page}.md: нет в pages реестра`);
+        if (!counted.has(page)) problems.push(`${rk.dir}/${page}.md: нет в pages реестра`);
       }
     }
   }
@@ -88,17 +126,34 @@ export function navItems(rks: Rk[]): Link[] {
   return rks.map((rk) => ({ text: rk.nav, link: `/${rk.dir}/` }));
 }
 
-export function sidebars(rks: Rk[], root: string): Record<string, { text: string; items: Link[] }[]> {
+function pageLink(dir: string, target: string): string {
+  const [page = "", anchor] = target.split("#");
+  const base = page === "README" ? `/${dir}/` : `/${dir}/${page}`;
+  return anchor === undefined ? base : `${base}#${anchor}`;
+}
+
+export function sidebars(rks: Rk[], root: string): Record<string, { text: string; items: SidebarItem[] }[]> {
+  const toLink = (dir: string, ref: PageRef): Link => {
+    const page = pageName(ref);
+    const text = typeof ref === "string" ? (pageTitle(readFileSync(join(root, dir, `${page}.md`), "utf8")) ?? page) : ref.text;
+    return { text: escapeHtml(text), link: pageLink(dir, page) };
+  };
   return Object.fromEntries(
     rks.map((rk) => [
       `/${rk.dir}/`,
       [
         {
           text: rk.title,
-          items: rk.pages.map((page) => ({
-            text: escapeHtml(pageTitle(readFileSync(join(root, rk.dir, `${page}.md`), "utf8")) ?? page),
-            link: page === "README" ? `/${rk.dir}/` : `/${rk.dir}/${page}`,
-          })),
+          items: rk.pages.map((entry): SidebarItem =>
+            isGroup(entry)
+              ? {
+                  text: escapeHtml(entry.text),
+                  ...(entry.link === undefined ? {} : { link: pageLink(rk.dir, entry.link) }),
+                  collapsed: false,
+                  items: entry.items.map((item) => toLink(rk.dir, item)),
+                }
+              : toLink(rk.dir, entry),
+          ),
         },
       ],
     ]),
