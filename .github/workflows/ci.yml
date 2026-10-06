@@ -34,4 +34,29 @@ jobs:
       - run: >-
           docker run --rm -v "$PWD:/work" -w /work guidelines-render:ci
           bash -c "bun install --frozen-lockfile && bun run typecheck && bun run test && bun run validate
-          && bun run check && bun run warm && bun run fresh && bun run links && bun run mermaid:native"
+          && bun run check && bun run warm && bun run fresh && bun run links && bun run mermaid:native
+          && node --version && bun run site:build && bun run site:check"
+      - name: Права на собранный сайт
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: sudo chown -R "$(id -u)" .vitepress/dist
+      - uses: actions/upload-pages-artifact@v5
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          path: .vitepress/dist
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

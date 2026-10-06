@@ -3,6 +3,9 @@
 // Спека: docs/superpowers/specs/2026-10-05-rk1-auth-guidelines-design.md §7.
 import { existsSync } from "node:fs";
 import { dirname, join, normalize } from "node:path";
+import { githubSlug } from "./slug.ts";
+
+export { githubSlug } from "./slug.ts";
 
 const EXCLUDED = ["scripts/fixtures/", "node_modules/", ".claude/", "docs/"];
 
@@ -13,28 +16,6 @@ export function markdownFiles(root = "."): string[] {
     ...new Bun.Glob("rk*/**/*.md").scanSync(root),
   ].map((name) => name.replaceAll("\\", "/"));
   return [...new Set(found)].filter((name) => !EXCLUDED.some((prefix) => name.startsWith(prefix))).sort();
-}
-
-// Выделение снимается только парой, как в CommonMark: открывающий маркер не перед пробелом,
-// закрывающий не после пробела, подчёркивания не внутри слова. Одиночные маркеры остаются.
-const EMPHASIS_PAIRS: RegExp[] = [
-  /\*\*(?=\S)(.+?)(?<=\S)\*\*/gu,
-  /(?<![\p{L}\p{N}])__(?=\S)(.+?)(?<=\S)__(?![\p{L}\p{N}])/gu,
-  /\*(?=\S)(.+?)(?<=\S)\*/gu,
-  /(?<![\p{L}\p{N}])_(?=\S)(.+?)(?<=\S)_(?![\p{L}\p{N}])/gu,
-];
-
-function stripEmphasis(text: string): string {
-  return text
-    .split(/(`[^`]*`)/)
-    .map((part, index) => (index % 2 === 1 ? part : EMPHASIS_PAIRS.reduce((acc, re) => acc.replace(re, "$1"), part)))
-    .join("");
-}
-
-export function githubSlug(heading: string): string {
-  return stripEmphasis(heading.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").trim().toLowerCase())
-    .replace(/[^\p{L}\p{N} _-]/gu, "")
-    .replaceAll(" ", "-");
 }
 
 // Строки вне блоков кода (``` и ~~~) с их номерами (с 1).

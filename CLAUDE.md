@@ -33,8 +33,13 @@ Markdown. Обзор и команды — `README.md`.
 
   ```bash
   bun run typecheck && bun run test && bun run validate && bun run check \
-    && bun run fresh && bun run links && bun run mermaid
+    && bun run fresh && bun run links && bun run mermaid && bun run site:build && bun run site:check
   ```
+
+- Сайт (VitePress): `bun run site:dev`, `bun run site:build && bun run site:check`,
+  `bun run site:preview`. Новая страница РК — в `pages` реестра `.vitepress/rk.ts`, иначе падает
+  тест; папка вне реестра на сайт не попадает. Со страниц не ссылаться на РК вне реестра, а на
+  файлы не в Markdown — только полным URL GitHub (иначе падают сборка или `site:check`).
 
 - Зависимости: `bunfig.toml` фиксирует публичный реестр. Если локальное окружение его
   переопределяет, ставь с `--registry https://registry.npmjs.org/`. В `bun.lock` не должно
