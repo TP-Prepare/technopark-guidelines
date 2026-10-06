@@ -40,4 +40,10 @@ export const rks: Rk[] = [
       'questions',
     ],
   },
+  {
+    dir: 'tools',
+    title: 'Инструменты',
+    nav: 'Инструменты',
+    pages: [{ page: 'README', text: 'Обзор' }, 'cookie-viewer'],
+  },
 ];

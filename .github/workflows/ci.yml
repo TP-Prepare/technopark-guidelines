@@ -35,7 +35,7 @@ jobs:
           docker run --rm -v "$PWD:/work" -w /work guidelines-render:ci
           bash -c "bun install --frozen-lockfile && bun run typecheck && bun run test && bun run validate
           && bun run check && bun run warm && bun run fresh && bun run links && bun run mermaid:native
-          && node --version && bun run site:build && bun run site:check"
+          && bun run ext:build && bun run ext:zip && node --version && bun run site:build && bun run site:check"
       - name: Права на собранный сайт
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: sudo chown -R "$(id -u)" .vitepress/dist

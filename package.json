@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "bun test",
-    "typecheck": "tsc",
+    "typecheck": "tsc && tsc -p tools/cookie-viewer",
     "validate": "bun scripts/eraser.ts validate",
     "check": "bun scripts/check-colors.ts",
     "warm": "bun scripts/warm-icons.ts",
@@ -22,12 +22,16 @@
     "site:dev": "vitepress dev",
     "site:build": "vitepress build",
     "site:preview": "vitepress preview",
-    "site:check": "bun scripts/check-site.ts"
+    "site:check": "bun scripts/check-site.ts",
+    "ext:build": "bun scripts/build-extension.ts build",
+    "ext:zip": "bun scripts/build-extension.ts zip"
   },
   "devDependencies": {
     "@eraserlabs/diagrams-cli": "0.1.0",
     "@mermaid-js/mermaid-cli": "11.17.0",
     "@types/bun": "1.4.2",
+    "@types/chrome": "0.3.4",
+    "fflate": "0.8.3",
     "medium-zoom": "1.1.0",
     "mermaid": "^11",
     "typescript": "7.0.2",

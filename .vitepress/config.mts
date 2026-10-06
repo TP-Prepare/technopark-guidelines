@@ -33,6 +33,7 @@ export default withMermaid(defineConfig({
     '.claude/**',
     'scripts/**',
     'node_modules/**',
+    'tools/cookie-viewer/**', // исходники расширения, не страницы
     'tmp-mermaid/**', // копии страниц из bun run mermaid:native
     ...unpublishedDirs(rks, '.').map((dir) => `${dir}/**`),
     ...rks.map((rk) => `${rk.dir}/diagrams/**`), // схемы: JSON и PNG, не страницы

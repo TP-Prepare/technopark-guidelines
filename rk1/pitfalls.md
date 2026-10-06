@@ -77,6 +77,9 @@ refresh вызывает, только если access истёк. Cookie при
 - Network → запрос на `/api/v1/auth/refresh` или `/api/v1/auth/logout` → Cookies → Request
   Cookies. `__Secure-refresh` видна у каждого запроса, к которому браузер её приложил.
 - После такого запроса cookie появится и в Application.
+- Все cookie домена с любым `Path`, включая `HttpOnly`, показывает расширение
+  [«Все cookie»](../tools/cookie-viewer.md). В Firefox Storage Inspector показывает все cookie
+  хоста с любым `Path`.
 
 **Как исправить.** Ничего. Не расширяйте `Path` до `/`, «чтобы cookie было видно»: тогда
 долгий токен будет уходить с каждым запросом к сайту — к API, HTML и статике — без всякой
@@ -109,6 +112,9 @@ refresh вызывает, только если access истёк. Cookie при
   запросом, включая `HttpOnly`.
 - Если в `document.cookie` виден токен или `session_id` — например, `access_token=...`, — у
   этой cookie нет `HttpOnly`. Это нарушение минимума.
+- Все cookie домена с любым `Path`, включая `HttpOnly`, показывает расширение
+  [«Все cookie»](../tools/cookie-viewer.md). В Firefox Storage Inspector показывает все cookie
+  хоста с любым `Path`.
 
 **Как исправить.** Если пусто совсем, а в варианте A или C должна быть `__Host-csrf`:
 проверьте, что на бэке стоит `ensureCSRFCookie` и ставит cookie на любой ответ API, в том числе

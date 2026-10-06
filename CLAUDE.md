@@ -33,8 +33,13 @@ Markdown. Обзор и команды — `README.md`.
 
   ```bash
   bun run typecheck && bun run test && bun run validate && bun run check \
-    && bun run fresh && bun run links && bun run mermaid && bun run site:build && bun run site:check
+    && bun run fresh && bun run links && bun run mermaid && bun run ext:build && bun run ext:zip \
+    && bun run site:build && bun run site:check
   ```
+
+- Расширение `tools/cookie-viewer/` собирается `bun run ext:build` в `dist/`, архив для сайта —
+  `bun run ext:zip` в `public/cookie-viewer.zip`; оба в `.gitignore`. В `tools/cookie-viewer/`
+  нет `.md` (иначе файл станет страницей сайта); страницы раздела — `tools/*.md`.
 
 - Сайт (VitePress): `bun run site:dev`, `bun run site:build && bun run site:check`,
   `bun run site:preview`. Новая страница РК — в `pages` реестра `.vitepress/rk.ts`, иначе падает
