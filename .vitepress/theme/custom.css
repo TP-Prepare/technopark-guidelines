@@ -22,12 +22,12 @@
   z-index: 100;
 }
 
-/* Схемы Mermaid: натуральный размер, горизонтальная прокрутка внутри блока. */
-.mermaid-diagram {
+/* Схемы Mermaid (обёртка vitepress-plugin-mermaid): натуральный размер, прокрутка внутри блока. */
+.vp-doc .mermaid {
   overflow-x: auto;
   margin: 16px 0;
 }
-.mermaid-diagram svg {
+.vp-doc .mermaid svg {
   display: block;
   margin: 0 auto;
   max-width: none;

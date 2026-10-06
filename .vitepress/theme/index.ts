@@ -4,14 +4,10 @@ import type { Theme } from 'vitepress';
 import mediumZoom from 'medium-zoom';
 import type { Zoom } from 'medium-zoom';
 import { nextTick, onMounted, watch } from 'vue';
-import Mermaid from './Mermaid.vue';
 import './custom.css';
 
 const theme: Theme = {
   extends: DefaultTheme,
-  enhanceApp({ app }) {
-    app.component('Mermaid', Mermaid);
-  },
   setup() {
     const route = useRoute();
     let zoom: Zoom | undefined;
