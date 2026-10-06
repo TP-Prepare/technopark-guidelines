@@ -449,8 +449,9 @@ export async function logout() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
-  // Отказ (403, 503): выход не случился, сессия жива — показать ошибку, состояние не сбрасывать.
-  if (!res.ok) return false;
+  // 401 — сессии уже нет (истекла, «выйти со всех устройств»): сбрасываем, как после выхода.
+  // Другие отказы (403, 415, 503): выход не случился — показать ошибку, состояние не сбрасывать.
+  if (!res.ok && res.status !== 401) return false;
   onSessionLost();
   return true;
 }

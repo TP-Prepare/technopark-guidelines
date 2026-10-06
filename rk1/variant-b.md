@@ -385,8 +385,9 @@ export async function logout() {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
   });
-  // Отказ (403, 503): выход не случился, refresh-cookie жива — показать ошибку, access не трогать.
-  if (!res.ok) return false;
+  // 401 — сессии уже нет (истекла, «выйти со всех устройств», повтор refresh): чистим, как после
+  // выхода. Другие отказы (403, 415, 503): выход не случился — показать ошибку, access не трогать.
+  if (!res.ok && res.status !== 401) return false;
   accessToken = null;
   return true;
 }

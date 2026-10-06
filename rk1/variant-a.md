@@ -348,7 +348,8 @@ export async function api(path, options = {}) {
   const send = () => {
     const headers = { ...options.headers };
     if (!['GET', 'HEAD'].includes(method)) {
-      headers['Content-Type'] ??= 'application/json';
+      // У FormData заголовок с boundary ставит браузер.
+      if (!(options.body instanceof FormData)) headers['Content-Type'] ??= 'application/json';
       headers['X-CSRF-Token'] = csrfToken();
     }
     return fetch(path, { ...options, headers, credentials: 'include' });
