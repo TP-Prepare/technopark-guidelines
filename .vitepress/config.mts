@@ -3,6 +3,7 @@ import { defineConfig, type MarkdownRenderer } from 'vitepress';
 import { rks } from './rk.ts';
 import { navItems, sidebars, unpublishedDirs } from '../scripts/site-registry.ts';
 import { githubSlug } from '../scripts/slug.ts';
+import { mermaidFence } from './mermaid-fence.ts';
 
 // rewrites не трогают относительные ссылки: [обзор](README.md) осталась бы ./README.
 // Правило переписывает README.md в index.md до VitePress, тот делает из него адрес папки.
@@ -42,6 +43,7 @@ export default defineConfig({
     anchor: { slugify: githubSlug },
     config(md) {
       md.use(readmeLinks);
+      md.use(mermaidFence);
     },
   },
   themeConfig: {
