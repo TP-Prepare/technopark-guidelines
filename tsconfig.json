@@ -13,5 +13,5 @@
     "skipLibCheck": true,
     "types": ["bun"]
   },
-  "include": ["scripts/**/*.ts"]
+  "include": ["scripts/**/*.ts", ".vitepress/*.ts"]
 }
