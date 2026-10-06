@@ -4,3 +4,5 @@ node_modules/
 /tmp-mermaid/
 .vitepress/dist/
 .vitepress/cache/
+tools/cookie-viewer/dist/
+public/cookie-viewer.zip
