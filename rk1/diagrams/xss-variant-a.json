@@ -1,0 +1,25 @@
+{
+  "entities": [
+    {"tag": "Group", "id": "browser", "x": 0, "y": 0, "width": 740, "height": 580, "color": "blue", "title": {"text": "Браузер пользователя"}},
+    {"tag": "Group", "id": "js-context", "x": 20, "y": 40, "width": 700, "height": 200, "color": "blue", "styleMode": "plain", "containerId": "browser", "title": {"text": "JS-контекст страницы example.ru"}},
+    {"tag": "Icon", "id": "spa", "x": 180, "y": 100, "width": 100, "height": 100, "icon": "code", "containerId": "js-context", "texts": [{"text": "Фронтенд, SPA"}]},
+    {"tag": "Group", "id": "cookie-jar", "x": 20, "y": 280, "width": 700, "height": 260, "color": "blue", "styleMode": "plain", "containerId": "browser", "title": {"text": "Хранилище cookie"}},
+    {"tag": "Icon", "id": "csrf-cookie", "x": 180, "y": 340, "width": 100, "height": 100, "icon": "cookie", "containerId": "cookie-jar", "texts": [{"text": "__Host-csrf · без HttpOnly"}]},
+    {"tag": "Icon", "id": "access-cookie", "x": 380, "y": 340, "width": 100, "height": 100, "icon": "key", "containerId": "cookie-jar", "texts": [{"text": "access_token · HttpOnly · Path=/api"}]},
+    {"tag": "Icon", "id": "refresh-cookie", "x": 580, "y": 340, "width": 100, "height": 100, "icon": "key-round", "containerId": "cookie-jar", "texts": [{"text": "__Secure-refresh · HttpOnly · Path=/api/v1/auth"}]},
+    {"tag": "Group", "id": "servers", "x": 940, "y": 0, "width": 260, "height": 400, "color": "green", "title": {"text": "Наш бэкенд: example.ru/api"}},
+    {"tag": "Icon", "id": "api", "x": 1020, "y": 220, "width": 100, "height": 100, "icon": "server", "containerId": "servers", "texts": [{"text": "API"}]},
+    {"tag": "Group", "id": "attacker", "x": 20, "y": 740, "width": 1460, "height": 220, "color": "red", "title": {"text": "Злоумышленник"}},
+    {"tag": "Icon", "id": "xss", "x": 580, "y": 800, "width": 100, "height": 100, "icon": "bug", "containerId": "attacker", "texts": [{"text": "Внедрённый скрипт"}]},
+    {"tag": "Icon", "id": "evil", "x": 1100, "y": 800, "width": 100, "height": 100, "icon": "skull", "containerId": "attacker", "texts": [{"text": "Сервер evil.example"}]},
+    {"tag": "Textbox", "id": "evil-note", "x": 1240, "y": 820, "width": 200, "containerId": "attacker", "text": "Токенов нет — после закрытия вкладки нечего использовать"},
+    {"tag": "Legend", "id": "legend", "x": 1260, "y": 0, "width": 340, "entries": [{"text": "Браузер пользователя", "color": "#2866c4"}, {"text": "Наши серверы", "color": "#30a050"}, {"text": "Злоумышленник", "color": "#bd413a"}, {"text": "Атака", "color": "#bd413a"}, {"text": "Браузер прикладывает сам", "color": "#c38424"}]}
+  ],
+  "connections": [
+    {"tag": "Relationship", "from": "access-cookie", "to": "api", "label": "к /api", "color": "orange", "lineStyle": "solid"},
+    {"tag": "Relationship", "from": "xss", "to": "csrf-cookie", "label": "читает document.cookie, как наш фронт", "color": "red", "lineStyle": "dotted"},
+    {"tag": "Relationship", "from": "xss", "to": "access-cookie", "label": "прочитать нельзя: HttpOnly", "color": "red", "lineStyle": "dotted"},
+    {"tag": "Relationship", "from": "xss", "to": "refresh-cookie", "label": "прочитать нельзя: HttpOnly", "color": "red", "lineStyle": "dotted"},
+    {"tag": "Relationship", "from": "xss", "to": "api", "label": "fetch + X-CSRF-Token: действия, пока вкладка открыта", "color": "red", "lineStyle": "dotted"}
+  ]
+}
