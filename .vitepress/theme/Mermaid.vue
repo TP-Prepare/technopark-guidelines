@@ -20,6 +20,9 @@ async function draw(): Promise<void> {
       startOnLoad: false,
       theme: isDark.value ? 'dark' : 'default',
       securityLevel: 'strict',
+      // Натуральный размер вместо сжатия до колонки; длинные подписи переносятся,
+      // а слишком широкая схема прокручивается внутри своего блока (custom.css).
+      sequence: { wrap: true, useMaxWidth: false },
     });
     const result = await mermaid.render(`${uid}-${counter++}`, decodeURIComponent(props.code));
     if (run !== seq) return;

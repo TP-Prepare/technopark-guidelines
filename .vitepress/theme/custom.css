@@ -21,3 +21,14 @@
 .medium-zoom-image--opened {
   z-index: 100;
 }
+
+/* Схемы Mermaid: натуральный размер, горизонтальная прокрутка внутри блока. */
+.mermaid-diagram {
+  overflow-x: auto;
+  margin: 16px 0;
+}
+.mermaid-diagram svg {
+  display: block;
+  margin: 0 auto;
+  max-width: none;
+}
