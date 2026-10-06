@@ -75,3 +75,7 @@ test('registryProblems: missing group anchor', () =>
   expect(registryProblems(withPages(['README', grp({ link: 'README#нет' })]), root)).toEqual(['rk1: у группы «Группа» нет якоря #нет']));
 test('registryProblems: missing page inside group', () =>
   expect(registryProblems(withPages(['README', 'a', grp({ items: ['zz'] })]), root)).toContain('rk1/zz.md: файла нет'));
+test('registryProblems: group link to missing file', () =>
+  expect(registryProblems(withPages(['README', grp({ link: 'READM#x', items: ['a'] })]), root)).toEqual([
+    'rk1: у группы «Группа» ссылка на несуществующую страницу',
+  ]));

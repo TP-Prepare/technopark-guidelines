@@ -49,7 +49,7 @@ export default withMermaid(defineConfig({
     },
   },
   // Настройки читаемости: сообщения не сжимаются под ширину колонки, длинные переносятся.
-  mermaid: { sequence: { wrap: true, useMaxWidth: false } },
+  mermaid: { securityLevel: 'strict', sequence: { wrap: true, useMaxWidth: false } },
   themeConfig: {
     nav: navItems(rks),
     sidebar: sidebars(rks, '.'),

@@ -84,7 +84,9 @@ export function registryProblems(rks: Rk[], root: string): string[] {
       if (entry.link !== undefined) {
         const [target = "", anchor = ""] = entry.link.split("#");
         const file = join(root, rk.dir, `${target}.md`);
-        if (anchor && existsSync(file) && !headingAnchors(readFileSync(file, "utf8")).has(anchor)) {
+        if (!existsSync(file)) {
+          problems.push(`${rk.dir}: у группы «${entry.text}» ссылка на несуществующую страницу`);
+        } else if (anchor && !headingAnchors(readFileSync(file, "utf8")).has(anchor)) {
           problems.push(`${rk.dir}: у группы «${entry.text}» нет якоря #${anchor}`);
         }
       }

@@ -125,6 +125,7 @@ export const rks: Rk[] = [
   2.0.17 в `bun.lock`): плагин превращает блок ` ```mermaid ` в обёртку `div.mermaid`, рисует SVG на
   клиенте и перерисовывает при смене темы.
 - Настройки читаемости — `mermaid: { sequence: { wrap: true, useMaxWidth: false } }` в конфиге;
+  `securityLevel: 'strict'` (плагин по умолчанию ставит `loose`): HTML в подписях экранируется, клики и JS-колбэки отключены, ведь источники приходят из PR.
   `.vitepress/theme/custom.css` даёт `.vp-doc .mermaid` горизонтальную прокрутку внутри блока.
 - Зависимость `mermaid` (^11) остаётся: это peer плагина и та же основная версия, что внутри
   `@mermaid-js/mermaid-cli` 11.17.0. `bun run mermaid` в CI по-прежнему проверяет, что каждая схема
