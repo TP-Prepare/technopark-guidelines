@@ -57,3 +57,16 @@ test('isNarrowPath', () => {
   expect(isNarrowPath(r('example.ru', '/', 'a'))).toBe(false);
   expect(isNarrowPath(r('example.ru', '/api/v1/auth', 'a'))).toBe(true);
 });
+
+test('domainsFor: нормализация хоста', () => {
+  expect(domainsFor('example.ru.')).toEqual(['example.ru']);
+  expect(domainsFor('localhost:5173')).toEqual(['localhost']);
+  expect(domainsFor('App.Example.RU')).toEqual(['app.example.ru', 'example.ru']);
+  expect(domainsFor('[::1]')).toEqual(['[::1]']);
+  expect(domainsFor('[::1]:3000')).toEqual(['[::1]']);
+  expect(domainsFor('a..ru').some((d) => d.startsWith('.'))).toBe(false);
+});
+test('originsFor: нормализация хоста', () => {
+  expect(originsFor('localhost:5173')).toEqual(['*://localhost/*']);
+  expect(originsFor('example.ru.')).toEqual(['*://*.example.ru/*', '*://example.ru/*']);
+});

@@ -14,11 +14,23 @@ export interface CookieRow {
 
 const isIp = (host: string): boolean => /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(':');
 
+/** Нижний регистр, без порта (кроме IPv6 в скобках остаётся сам литерал) и без точки в конце. */
+function normalizeHost(input: string): string {
+  let host = input.toLowerCase();
+  if (host.startsWith('[')) {
+    const end = host.indexOf(']');
+    return end === -1 ? host : host.slice(0, end + 1);
+  }
+  if (host.indexOf(':') === host.lastIndexOf(':')) host = host.replace(/:\d*$/, '');
+  return host.endsWith('.') ? host.slice(0, -1) : host;
+}
+
 /** Домены от хоста вверх, без TLD. IP и одиночная метка — как есть. */
-export function domainsFor(hostname: string): string[] {
+export function domainsFor(input: string): string[] {
+  const hostname = normalizeHost(input);
   if (isIp(hostname)) return [hostname];
-  const labels = hostname.split('.');
-  if (labels.length < 2) return [hostname];
+  const labels = hostname.split('.').filter((label) => label !== '');
+  if (labels.length < 2) return [labels.join('.') || hostname];
   const result: string[] = [];
   for (let i = 0; i <= labels.length - 2; i++) result.push(labels.slice(i).join('.'));
   return result;
@@ -30,7 +42,8 @@ export function defaultDomain(domains: string[]): string {
 }
 
 /** Шаблоны совпадений Chrome для домена (порт в шаблонах не указывается). */
-export function originsFor(domain: string): string[] {
+export function originsFor(input: string): string[] {
+  const domain = normalizeHost(input);
   if (isIp(domain) || !domain.includes('.')) return [`*://${domain}/*`];
   return [`*://*.${domain}/*`, `*://${domain}/*`];
 }
