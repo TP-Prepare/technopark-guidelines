@@ -33,6 +33,7 @@
 
 Материалы читаются и на сайте: https://tp-prepare.github.io/technopark-guidelines/. Он
 собирается из этих же файлов при каждом merge в `main`, отдельного контента у сайта нет.
+Версии расширения «Все cookie» и описание изменений — в [GitHub Releases](https://github.com/TP-Prepare/technopark-guidelines/releases?q=cookie-viewer&expanded=true).
 
 ## Как предложить правку
 
@@ -107,6 +108,9 @@ bun run site:preview  # http://localhost:4173/technopark-guidelines/, после
 откройте `chrome://extensions`, включите режим разработчика и загрузите распакованное
 расширение из `tools/cookie-viewer/dist`; после правок снова `bun run ext:build` и «Обновить» на
 карточке расширения. В `tools/cookie-viewer/` нет `.md`: иначе файл станет страницей сайта.
+
+Изменили `tools/cookie-viewer/` — поднимите `version` в `manifest.json`: CI выпустит релиз
+`cookie-viewer-v<version>` после мержа. Без смены версии релиза не будет.
 
 Папка, которой нет в реестре, на сайт не попадает: черновики можно держать в `main`. Страница,
 не перечисленная в `pages`, роняет `bun test`.
