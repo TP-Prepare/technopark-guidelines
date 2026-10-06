@@ -515,8 +515,7 @@ Application → Cookies, Network → запрос → Cookies, `document.cookie`
 - `SameSite` не помогает: злоумышленнику не нужны cookie жертвы, а cookie из ответа на
   отправку формы браузер сохраняет при любом `SameSite`;
 - A и C: Double Submit на login и register (cookie с токеном пришла с ответом на стартовый
-  запрос к API); второй слой —
-  проверка `Origin` / `Sec-Fetch-Site` (настойчиво рекомендуется);
+  запрос к API); второй слой — проверка `Origin` / `Sec-Fetch-Site` (настойчиво рекомендуется);
 - B: CSRF-токена нет, основная защита — проверка `Origin` / `Sec-Fetch-Site` и только
   `Content-Type: application/json` на ручках входа;
 - токен до входа не привязан к пользователю, поэтому после входа сервер выдаёт новый. Плюс,
@@ -905,8 +904,9 @@ Application → Cookies, Network → запрос → Cookies, `document.cookie`
 **Засчитывается, если по своему варианту названы шаги:**
 
 - **регистрация и вход** — сервер валидирует поля, хеширует или сверяет пароль; в A и C
-  CSRF-cookie уже пришла с ответом на стартовый запрос к API, на входе — `X-CSRF-Token`; в ответе — cookie с флагами (A, C)
-  или access в теле и refresh-cookie (B); после входа — новый CSRF-токен (A, C);
+  CSRF-cookie уже пришла с ответом на стартовый запрос к API, на входе — `X-CSRF-Token`; в
+  ответе — cookie с флагами (A, C) или access в теле и refresh-cookie (B); после входа — новый
+  CSRF-токен (A, C);
 - **страница файла** — `GET /api/v1/files/{id}` с access-cookie, `Authorization: Bearer` или
   cookie сессии; сервер узнаёт пользователя и проверяет владельца, чужой файл — `404`;
 - **новый блок** — `POST` с `Content-Type: application/json` и, в A и C, `X-CSRF-Token`;
@@ -915,8 +915,8 @@ Application → Cookies, Network → запрос → Cookies, `document.cookie`
   refresh, потом профиль;
 - **через час** — A и B: access истёк, `401` → refresh → повтор; C: сессия жива, если срок
   неактивности больше часа, иначе `401` и страница входа;
-- **выход** — сервер удаляет сессию или refresh-записи, авторизационные cookie стираются; в A и B access живёт до
-  `exp`;
+- **выход** — сервер удаляет сессию или refresh-записи, авторизационные cookie стираются; в A
+  и B access живёт до `exp`;
 - если API на отдельном origin — preflight перед запросами с JSON, `X-CSRF-Token` или
   `Authorization` и `credentials: 'include'`.
 
