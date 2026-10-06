@@ -32,8 +32,8 @@
 ## Сайт
 
 Материалы читаются и на сайте: https://tp-prepare.github.io/technopark-guidelines/. Он
-собирается из этих же файлов при каждом merge в `main`, отдельного контента у сайта нет. Версии расширения «Все cookie» и описание изменений —
-в [GitHub Releases](https://github.com/TP-Prepare/technopark-guidelines/releases?q=cookie-viewer&expanded=true).
+собирается из этих же файлов при каждом merge в `main`, отдельного контента у сайта нет.
+Версии расширения «Все cookie» и описание изменений — в [GitHub Releases](https://github.com/TP-Prepare/technopark-guidelines/releases?q=cookie-viewer&expanded=true).
 
 ## Как предложить правку
 
