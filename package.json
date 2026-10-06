@@ -28,11 +28,10 @@
     "@eraserlabs/diagrams-cli": "0.1.0",
     "@mermaid-js/mermaid-cli": "11.17.0",
     "@types/bun": "1.4.2",
-    "@types/markdown-it": "14",
-    "markdown-it": "14",
     "medium-zoom": "1.1.0",
     "mermaid": "^11",
     "typescript": "7.0.2",
-    "vitepress": "1.6.4"
+    "vitepress": "1.6.4",
+    "vitepress-plugin-mermaid": "2.0.17"
   }
 }

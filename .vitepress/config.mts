@@ -1,10 +1,10 @@
 // Конфиг сайта гайдлайнов. Спека: docs/superpowers/specs/2026-10-06-vitepress-site-design.md §3–4.
 import { defineConfig, type MarkdownRenderer } from 'vitepress';
+import { withMermaid } from 'vitepress-plugin-mermaid';
 import { rks } from './rk.ts';
 import { SITE_BASE } from './site.ts';
 import { navItems, sidebars, unpublishedDirs } from '../scripts/site-registry.ts';
 import { githubSlug } from '../scripts/slug.ts';
-import { mermaidFence } from './mermaid-fence.ts';
 
 // rewrites не трогают относительные ссылки: [обзор](README.md) осталась бы ./README.
 // Правило переписывает README.md в index.md до VitePress, тот делает из него адрес папки.
@@ -22,7 +22,7 @@ function readmeLinks(md: MarkdownRenderer): void {
   });
 }
 
-export default defineConfig({
+export default withMermaid(defineConfig({
   lang: 'ru-RU',
   title: 'Гайдлайны Технопарка',
   base: SITE_BASE,
@@ -46,9 +46,10 @@ export default defineConfig({
     anchor: { slugify: githubSlug },
     config(md) {
       md.use(readmeLinks);
-      md.use(mermaidFence);
     },
   },
+  // Настройки читаемости: сообщения не сжимаются под ширину колонки, длинные переносятся.
+  mermaid: { sequence: { wrap: true, useMaxWidth: false } },
   themeConfig: {
     nav: navItems(rks),
     sidebar: sidebars(rks, '.'),
@@ -92,4 +93,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));
