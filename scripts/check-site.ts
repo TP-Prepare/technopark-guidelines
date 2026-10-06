@@ -3,8 +3,8 @@
 // Спека: docs/superpowers/specs/ (VitePress-сайт) §4.1.
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { SITE_BASE } from "../.vitepress/site.ts";
 
-const SITE_BASE = "/technopark-guidelines/";
 const SITE_DIST = ".vitepress/dist";
 // Фиктивный origin нужен только для разбора относительных ссылок через URL.
 const ORIGIN = "http://site.invalid";
@@ -35,6 +35,7 @@ function unescapeHtml(value: string): string {
   });
 }
 
+// Только атрибуты в двойных кавычках: VitePress всегда выводит их так.
 // Значения id="…" страницы (в том виде, в каком их читает браузер).
 function idsOf(html: string): Set<string> {
   return new Set([...html.matchAll(/\sid="([^"]*)"/g)].map((match) => unescapeHtml(match[1] ?? "")));
@@ -63,6 +64,7 @@ function referencesOf(html: string): Reference[] {
   const refs: Reference[] = [];
   for (const [tag] of html.matchAll(/<(?:a|link|script|img)\s[^>]*>/gi)) {
     const kind = /^<img/i.test(tag) ? "image" : "link";
+    // Разбираются только атрибуты в двойных кавычках: VitePress всегда выводит их так.
     const attr = kind === "image" || /^<script/i.test(tag) ? "src" : "href";
     const value = new RegExp(`\\s${attr}="([^"]*)"`, "i").exec(tag)?.[1];
     if (value !== undefined) refs.push({ kind, value: unescapeHtml(value) });

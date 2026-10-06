@@ -1,6 +1,7 @@
 // Конфиг сайта гайдлайнов. Спека: docs/superpowers/specs/2026-10-06-vitepress-site-design.md §3–4.
 import { defineConfig, type MarkdownRenderer } from 'vitepress';
 import { rks } from './rk.ts';
+import { SITE_BASE } from './site.ts';
 import { navItems, sidebars, unpublishedDirs } from '../scripts/site-registry.ts';
 import { githubSlug } from '../scripts/slug.ts';
 import { mermaidFence } from './mermaid-fence.ts';
@@ -24,7 +25,7 @@ function readmeLinks(md: MarkdownRenderer): void {
 export default defineConfig({
   lang: 'ru-RU',
   title: 'Гайдлайны Технопарка',
-  base: '/technopark-guidelines/',
+  base: SITE_BASE,
   cleanUrls: true,
   srcExclude: [
     'docs/**',
@@ -34,12 +35,14 @@ export default defineConfig({
     'node_modules/**',
     'tmp-mermaid/**', // копии страниц из bun run mermaid:native
     ...unpublishedDirs(rks, '.').map((dir) => `${dir}/**`),
+    ...rks.map((rk) => `${rk.dir}/diagrams/**`), // схемы: JSON и PNG, не страницы
   ],
   rewrites: {
     'README.md': 'index.md',
     ...Object.fromEntries(rks.map((rk) => [`${rk.dir}/README.md`, `${rk.dir}/index.md`])),
   },
   markdown: {
+    codeCopyButtonTitle: 'Копировать код',
     anchor: { slugify: githubSlug },
     config(md) {
       md.use(readmeLinks);
@@ -51,6 +54,7 @@ export default defineConfig({
     sidebar: sidebars(rks, '.'),
     outline: { level: [2, 3], label: 'На этой странице' },
     docFooter: { prev: 'Предыдущая страница', next: 'Следующая страница' },
+    skipToContentLabel: 'Перейти к содержимому',
     sidebarMenuLabel: 'Меню',
     returnToTopLabel: 'Наверх',
     darkModeSwitchLabel: 'Оформление',
@@ -60,6 +64,7 @@ export default defineConfig({
     notFound: {
       title: 'Страница не найдена',
       quote: 'Такой страницы нет — возможно, её переименовали.',
+      linkLabel: 'Перейти на главную',
       linkText: 'На главную',
     },
     search: {

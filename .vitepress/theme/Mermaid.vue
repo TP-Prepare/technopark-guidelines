@@ -8,21 +8,25 @@ const svg = ref('');
 const error = ref('');
 const mounted = ref(false);
 let counter = 0;
+let seq = 0;
 const uid = `mermaid-${Math.random().toString(36).slice(2)}`;
 
 async function draw(): Promise<void> {
-  // mermaid работает только с DOM, поэтому грузится на клиенте и только здесь.
-  const { default: mermaid } = await import('mermaid');
-  mermaid.initialize({
-    startOnLoad: false,
-    theme: isDark.value ? 'dark' : 'default',
-    securityLevel: 'strict',
-  });
+  const run = ++seq;
   try {
+    // mermaid работает только с DOM, поэтому грузится на клиенте и только здесь.
+    const { default: mermaid } = await import('mermaid');
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: isDark.value ? 'dark' : 'default',
+      securityLevel: 'strict',
+    });
     const result = await mermaid.render(`${uid}-${counter++}`, decodeURIComponent(props.code));
+    if (run !== seq) return;
     svg.value = result.svg;
     error.value = '';
   } catch (e) {
+    if (run !== seq) return;
     error.value = e instanceof Error ? e.message : String(e);
   }
 }
