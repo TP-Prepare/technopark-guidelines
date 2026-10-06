@@ -60,7 +60,7 @@ bun install
 - **Mermaid** — `sequenceDiagram` прямо в Markdown. Участники с короткими ASCII-алиасами
   (`participant B as Браузер`), без `;` и `#` в сообщениях, одна диаграмма — одно событие.
 - **Eraser** — JSON в `rk*/diagrams/`, рядом с ним PNG и `.png.sha256`. Правятся только по
-  скиллу [`.claude/skills/eraser-diagrams/SKILL.md`](.claude/skills/eraser-diagrams/SKILL.md):
+  скиллу [`.claude/skills/eraser-diagrams/SKILL.md`](https://github.com/TP-Prepare/technopark-guidelines/blob/main/.claude/skills/eraser-diagrams/SKILL.md):
   формат, цвета, раскладка и цикл `bun run validate` → `bun run check` → `bun run warm` →
   `bun run render` → осмотр PNG → `bun run fresh`. PNG и `.png.sha256` коммитятся вместе с JSON:
   CI схемы не рендерит, а только проверяет, что PNG не устарел.
@@ -76,4 +76,4 @@ bun run typecheck && bun run test && bun run validate && bun run check \
 ```
 
 `links` проверяет относительные ссылки и якоря между `.md`, `mermaid` — что каждая диаграмма
-собирается. Подробнее о правилах репозитория — в [CLAUDE.md](CLAUDE.md).
+собирается. Подробнее о правилах репозитория — в [CLAUDE.md](https://github.com/TP-Prepare/technopark-guidelines/blob/main/CLAUDE.md).

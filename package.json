@@ -18,12 +18,16 @@
     "links": "bun scripts/check-links.ts",
     "mermaid": "bun scripts/docker.ts mermaid",
     "mermaid:native": "bun scripts/check-mermaid.ts",
-    "icons": "bun scripts/fetch-icons.ts"
+    "icons": "bun scripts/fetch-icons.ts",
+    "site:dev": "vitepress dev",
+    "site:build": "vitepress build",
+    "site:preview": "vitepress preview"
   },
   "devDependencies": {
     "@eraserlabs/diagrams-cli": "0.1.0",
     "@mermaid-js/mermaid-cli": "11.17.0",
     "@types/bun": "1.4.2",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "vitepress": "1.6.4"
   }
 }
