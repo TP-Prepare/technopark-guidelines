@@ -4,7 +4,7 @@
 
 **Goal:** Публичный репозиторий `TP-Prepare/technopark-guidelines` с папкой `rk1/`: гайдлайны по аутентификации, сессии и доступу к данным, диаграммы Mermaid и eraser, CI.
 
-**Architecture:** Markdown-документы в `rk1/`; Mermaid рендерит GitHub; eraser-схемы — JSON в `rk1/diagrams/`, PNG рендерит автор в Docker и коммитит рядом с файлом `.png.sha256`, CI сверяет хеши. Инструменты переносятся из `Cringe-Driven-Development-Team/docs` (коммит `c54a7ae7395a`) и урезаются до рендера PNG.
+**Architecture:** Markdown-документы в `rk1/`; Mermaid рендерит GitHub; eraser-схемы — JSON в `rk1/diagrams/`, PNG рендерит автор в Docker и коммитит рядом с файлом `.png.sha256`, CI сверяет хеши. Инструменты переносятся из внутреннего репозитория курса с инструментами схем (коммит `c54a7ae7395a`) и урезаются до рендера PNG.
 
 **Tech Stack:** Bun 1.3, TypeScript 7, `@eraserlabs/diagrams-cli` 0.1.0, `@mermaid-js/mermaid-cli`, Docker (образ Playwright), GitHub Actions.
 
@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Язык документов, коммитов, описаний PR — русский. Коммиты: `тип(область): что сделано`, типы `feat`, `fix`, `docs`, `ci`, `chore`.
-- Примеры только обезличенные: домены `example.ru`, `api.example.ru`, `avatars.example.ru`, `evil.example`. Запрещены названия команд и их кода: `cellestial`, `Cringe`, `DavaiDavaiDeploy`, `ddfilms`, реальные IP и токены.
+- Примеры только обезличенные: домены `example.ru`, `api.example.ru`, `avatars.example.ru`, `evil.example`. Запрещены названия команд курса и их проектов, реальные IP и токены.
 - Версии: `engines` — `node >=22.12`, `bun >=1.3`; `@eraserlabs/diagrams-cli` `0.1.0`, `typescript` `7.0.2`, `@types/bun` `1.4.2`; Dockerfile — `mcr.microsoft.com/playwright:v1.61.1-noble`, `bun@1.3.13`.
 - Рендерер eraser запускается только под Node, не под bun (Chrome зависает).
 - Уровни требований — дословно из спеки §3.1–§3.3; Synchronizer Token не описывается.
@@ -80,7 +80,7 @@ git worktree add .claude/worktrees/rk1 -b rk1
 
 - [ ] **Step 3: Перенести каркас из docs**
 
-Источник: `gh api "repos/Cringe-Driven-Development-Team/docs/contents/<path>?ref=c54a7ae7395a"`. Копировать как есть: `tsconfig.json`, `fonts.json`, `icons.txt`. `eraser-diagrams.config.json` — без поля `outDir`, `format` = `"png"`. `package.json`:
+Источник: файлы `<path>` из внутреннего репозитория курса с инструментами схем (коммит `c54a7ae7395a`). Копировать как есть: `tsconfig.json`, `fonts.json`, `icons.txt`. `eraser-diagrams.config.json` — без поля `outDir`, `format` = `"png"`. `package.json`:
 
 ```json
 {
@@ -296,7 +296,7 @@ bun install --frozen-lockfile && bun run typecheck && bun run test && bun run va
 3. Заканчивается `## Источники`; каждое утверждение о поведении браузера или стандарта сверено с одним из источников.
 4. Проверки:
    - `bun run links && bun run mermaid` → OK;
-   - `grep -niE 'cellestial|cringe|davaidavai|ddfilms' rk1/` → пусто;
+   - поиск названий команд курса и их проектов по `rk1/` (`grep -niE`) → пусто;
    - `grep -c '^## Источники' <файл>` → `1`.
 5. Commit `docs(rk1): <файл>`.
 
@@ -374,7 +374,7 @@ bun install --frozen-lockfile && bun run typecheck && bun run test && bun run va
 
 ### Task 17: PR и защита `main`
 
-- [ ] **Step 1: Финальный прогон** цепочки CI из Task 6 → всё зелёное; `grep -rniE 'cellestial|cringe|davaidavai|ddfilms' --exclude-dir=node_modules --exclude-dir=docs .` → пусто.
+- [ ] **Step 1: Финальный прогон** цепочки CI из Task 6 → всё зелёное; поиск названий команд курса и их проектов по всему репозиторию (`grep -rniE`, кроме `node_modules`) → пусто.
 - [ ] **Step 2: PR** `rk1` → `main`: заголовок «Гайдлайны РК1: аутентификация, сессия и доступ к данным», разделы «Что», «Решения» (отклонения из Global Constraints), «Проверка» (вывод цепочки). Дождаться зелёного CI.
 - [ ] **Step 3: Защита `main`:**
 

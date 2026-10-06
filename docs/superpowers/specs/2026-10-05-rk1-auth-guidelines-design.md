@@ -276,9 +276,9 @@ technopark-guidelines/
 
 ## 7. Инструменты
 
-### 7.1. Перенос из `Cringe-Driven-Development-Team/docs`
+### 7.1. Перенос инструментов
 
-Источник — коммит `c54a7ae7395a` (2026-10-05). Переносятся с тестами: `scripts/eraser.ts`, `docker.ts`, `warm-icons.ts`, `fetch-icons.ts`, `label-slack.ts`, `check-colors.ts`, `colors.ts`, `diagram.ts`; `Dockerfile`, `icons.txt`, `fonts.json`, `eraser-diagrams.config.json`, `tsconfig.json`, зависимости `package.json`. Не переносятся: `build-index`, `build-site`, Pages-workflow, превью веток, схемы `docs`.
+Источник — внутренний репозиторий курса с инструментами схем (коммит `c54a7ae7395a`), 2026-10-05. Переносятся с тестами: `scripts/eraser.ts`, `docker.ts`, `warm-icons.ts`, `fetch-icons.ts`, `label-slack.ts`, `check-colors.ts`, `colors.ts`, `diagram.ts`; `Dockerfile`, `icons.txt`, `fonts.json`, `eraser-diagrams.config.json`, `tsconfig.json`, зависимости `package.json`. Не переносятся: `build-index`, `build-site`, Pages-workflow, превью веток, схемы `docs`.
 
 Скилл `eraser-diagrams` переписывается: пути `rk*/diagrams/`, палитра §6.3, домены §1, без Pages и превью.
 
