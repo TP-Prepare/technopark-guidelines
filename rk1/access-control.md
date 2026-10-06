@@ -606,7 +606,8 @@ curl -i -X POST https://example.ru/api/v1/files \
 ```
 
 Регистрация с паролем длиннее предела — `400`, хотя форма такой пароль не пропустила бы
-(`{csrf}` — из `GET /api/v1/auth/csrf`):
+(`{csrf}` — из `Set-Cookie` любого ответа API на запрос без cookie, например
+`curl -si https://example.ru/api/v1/users/me`):
 
 ```bash
 curl -i -X POST https://example.ru/api/v1/auth/register \

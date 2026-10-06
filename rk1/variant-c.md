@@ -89,8 +89,10 @@ Set-Cookie: __Host-csrf={csrf}; Secure; SameSite=Lax; Path=/; Max-Age=2592000
   ([cors.md](cors.md#credentials-точный-origin-и-credentials-include)). `SameSite` cookie не
   помешает: `example.ru` и `api.example.ru` — один site.
 - **Фронт не прочитает `__Host-csrf` из `document.cookie`:** cookie принадлежит хосту
-  `api.example.ru`. Сервер отдаёт CSRF-токен ещё и в теле `GET /api/v1/auth/csrf`, фронт держит
-  его в памяти.
+  `api.example.ru`. `ensureCSRFCookie` на каждом ответе кладёт текущий токен ещё и в заголовок
+  ответа `X-CSRF-Token`, сервер перечисляет его в `Access-Control-Expose-Headers`, фронт держит
+  последнее увиденное значение в памяти; после перезагрузки его вернёт стартовый
+  `GET /api/v1/users/me`.
 
 `__Host-session` при этом остаётся у хоста `api.example.ru` — `Path=/` относится к путям API.
 Дальше в файле — вариант с одним origin.
@@ -113,10 +115,13 @@ sequenceDiagram
     participant A as API
     participant S as Сессии
     participant D as БД
-    F->>B: fetch GET /api/v1/auth/csrf
-    B->>A: GET
-    A-->>B: 204, Set-Cookie __Host-csrf
-    B-->>F: 204
+    Note over F: старт приложения, пользователь ещё не вошёл
+    F->>B: fetch GET /api/v1/users/me
+    B->>A: GET без cookie
+    A-->>B: 401, Set-Cookie __Host-csrf
+    Note over B: сохраняет __Host-csrf
+    B-->>F: 401
+    Note over F: не вошёл, показать форму входа
     F->>B: читает __Host-csrf из document.cookie
     F->>B: fetch POST /api/v1/auth/login, логин и пароль, X-CSRF-Token
     B->>A: POST с Cookie __Host-csrf и X-CSRF-Token
@@ -132,11 +137,14 @@ sequenceDiagram
 Детали:
 
 - **CSRF-cookie нужна ещё до входа**: `POST /api/v1/auth/login` — изменяющий запрос, и Double
-  Submit проверяет его так же, как остальные. Сервер может ставить её отдельной ручкой, как
-  здесь, или на любой ответ, если cookie у браузера ещё нет.
+  Submit проверяет его так же, как остальные. Её ставит middleware `ensureCSRFCookie` на любой
+  ответ API, если в запросе cookie ещё нет, — даже на `401` стартового запроса, как здесь.
+  Отдельная ручка за токеном не нужна: это лишний запрос и лишний шаг на фронте. Если cookie
+  всё же нет (удалили в другой вкладке), вход ответит `403` и этим же ответом принесёт новую
+  cookie — фронт один раз повторяет запрос (`login()` ниже).
 - **Новый CSRF-токен после входа.** Токен, полученный до входа, не переживает смену
   пользователя. В требованиях это опция «по желанию» («Новый CSRF-токен при login, refresh,
-  logout»); здесь делаем её всегда — это одна строка.
+  logout»); здесь делаем её при входе и выходе всегда — это одна строка.
 - **Новый `session_id` при каждом входе.** Сервер всегда создаёт сессию сам и никогда не
   принимает идентификатор, который пришёл от клиента до входа. Если у браузера уже была
   сессия, старую запись удаляют. Это защита от session fixation: злоумышленник не может заранее
@@ -222,8 +230,8 @@ sequenceDiagram
     B->>A: POST с Cookie __Host-session, __Host-csrf и X-CSRF-Token
     Note over A: X-CSRF-Token равен cookie
     A->>S: удалить сессию по хешу session_id
-    A-->>B: 204, Set-Cookie двух cookie с Max-Age 0
-    Note over B: удаляет cookie
+    A-->>B: 204, Set-Cookie __Host-session с Max-Age 0, новый __Host-csrf
+    Note over B: удаляет __Host-session, сохраняет новый CSRF-токен
     B-->>F: 204
     Note over F: сбросить состояние, открыть страницу входа
 ```
@@ -231,7 +239,8 @@ sequenceDiagram
 Logout завершает сессию **на сервере**: запись удалена, и тот же `session_id` больше ничего не
 откроет, даже если его скопировали. Только почистить cookie — нарушение минимума. В отличие от
 вариантов A и B, «хвоста» нет: в A и B access-токен живёт до своего `exp`, а здесь следующий
-запрос с удалённой сессией сразу получает `401`.
+запрос с удалённой сессией сразу получает `401`. `__Host-csrf` logout не стирает, а заменяет
+новым анонимным токеном: следующий вход сразу пройдёт Double Submit.
 
 ### Выйти со всех устройств
 
@@ -248,7 +257,7 @@ Logout завершает сессию **на сервере**: запись у�
   устройств» сервер удаляет каждую сессию из множества и само множество.
 
 Ручка — например, `POST /api/v1/auth/logout-all`, тоже изменяющая, с CSRF-проверкой. Текущую
-сессию она удаляет вместе с остальными и стирает cookie, как обычный выход. Та же операция
+сессию она удаляет вместе с остальными и меняет cookie, как обычный выход. Та же операция
 пригодится при смене пароля: разумно завершить все сессии, кроме текущей, а текущей выдать новый
 `session_id`. OWASP рекомендует давать пользователю возможность завершать свои сессии вручную;
 полный вариант — страница «Активные сессии» со списком устройств.
@@ -261,15 +270,14 @@ Logout завершает сессию **на сервере**: запись у�
 
 | Ручка | Что делает |
 |---|---|
-| `GET /api/v1/auth/csrf` | ставит `__Host-csrf`, если её нет |
 | `POST /api/v1/auth/register`, `POST /api/v1/auth/login` | проверяет данные, при успехе удаляет старую сессию браузера (если была), создаёт новую, ставит `__Host-session` и новый `__Host-csrf` |
-| `POST /api/v1/auth/logout` | удаляет текущую сессию, стирает две cookie |
-| `POST /api/v1/auth/logout-all` | удаляет все сессии пользователя, стирает две cookie |
+| `POST /api/v1/auth/logout` | удаляет текущую сессию, стирает `__Host-session`, ставит новый `__Host-csrf` |
+| `POST /api/v1/auth/logout-all` | удаляет все сессии пользователя, стирает `__Host-session`, ставит новый `__Host-csrf` |
 | `GET /api/v1/users/me` | профиль текущего пользователя по сессии |
 
-Порядок middleware: CORS (если API на другом origin) → CSRF на `POST`, `PUT`, `PATCH`, `DELETE`
-→ поиск сессии на защищённых ручках → обработчик, который проверяет владельца ресурса
-([access-control.md](access-control.md)).
+Порядок middleware: CORS (если API на другом origin) → `ensureCSRFCookie` на всех ручках API →
+CSRF на `POST`, `PUT`, `PATCH`, `DELETE` → поиск сессии на защищённых ручках → обработчик,
+который проверяет владельца ресурса ([access-control.md](access-control.md)).
 
 - **`session_id`** — случайная строка из криптостойкого генератора (`crypto/rand`), не меньше
   128 бит; в примере 256. Не id пользователя, не счётчик, не время входа и не их хеш: такой
@@ -403,7 +411,8 @@ func authMiddleware(store SessionStore, next http.Handler) http.Handler {
 }
 ```
 
-`newToken` и `csrfMiddleware` — те же, что в варианте A ([variant-a.md](variant-a.md#бэк)).
+`newToken`, `ensureCSRFCookie` и `csrfMiddleware` — те же, что в варианте A
+([variant-a.md](variant-a.md#бэк)).
 
 ### Фронт
 
@@ -414,6 +423,7 @@ func authMiddleware(store SessionStore, next http.Handler) http.Handler {
   `X-CSRF-Token` на изменяющих методах.
 - **`401` — страница входа.** Ни refresh, ни повтора запроса: это проще, чем в A и B.
 - **`403` — не повод выходить.** Это отказ CSRF-проверки или доступа: показать ошибку.
+  Исключение — вход без CSRF-cookie: его повторяют один раз (`login()` ниже).
 - **Состояние «вошёл»** — из ответа `GET /api/v1/users/me` при старте приложения. После F5
   cookie остались в браузере, и запрос просто проходит; CSRF-токен фронт заново читает из
   `document.cookie`.
@@ -436,12 +446,16 @@ export async function api(path, options = {}) {
 }
 
 export async function login(username, password) {
-  if (!csrfToken()) await fetch('/api/v1/auth/csrf', { credentials: 'include' });
-  return api('/api/v1/auth/login', {
+  // __Host-csrf уже принёс стартовый GET /api/v1/users/me.
+  const hadToken = csrfToken() !== '';
+  const send = () => api('/api/v1/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ login: username, password }),
   });
+  const res = await send();
+  // Cookie не было (удалили в другой вкладке): 403 уже принёс новую — повтор один раз.
+  return res.status === 403 && !hadToken ? send() : res;
 }
 
 export async function logout() {
@@ -505,7 +519,7 @@ export async function logout() {
 - Подпись токена HMAC с привязкой к пользователю или сессии (в C удобно подписывать
   `session_id`)
 - Проверка `Origin` / `Sec-Fetch-Site` на всех изменяющих запросах
-- Новый CSRF-токен при login, refresh, logout (в варианте C — при входе всегда)
+- Новый CSRF-токен при login, refresh, logout (в варианте C — при входе и выходе всегда)
 - `SameSite=Strict` у авторизационных cookie
 - Нет пользовательского HTML/SVG на поддоменах (`Content-Type` загрузок, CSP)
 

@@ -197,6 +197,7 @@ c := cors.New(cors.Options{
     AllowedOrigins:   cfg.AllowedOrigins, // из переменной окружения: []string{"https://example.ru"}
     AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
     AllowedHeaders:   []string{"Content-Type", "X-CSRF-Token"},
+    ExposedHeaders:   []string{"X-CSRF-Token"}, // A и C: CSRF-токен в заголовке ответа
     AllowCredentials: true,
     MaxAge:           600,
 })
@@ -276,6 +277,10 @@ Access-Control-Expose-Headers: Authorization
 ```
 
 фронт токен не прочитает и будет считать, что вход не удался.
+
+В **вариантах A и C** при отдельном API так же открывают `X-CSRF-Token`: фронт не видит
+`__Host-csrf` хоста `api.example.ru` в `document.cookie` и берёт токен из этого заголовка
+ответа ([variant-a.md](variant-a.md#если-api-на-отдельном-origin)).
 
 `Set-Cookie` JS не прочитает никогда, даже если перечислить его в `Expose-Headers`: это
 запрещённый заголовок ответа. Cookie браузер обрабатывает сам.
