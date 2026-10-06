@@ -161,10 +161,10 @@ sequenceDiagram
     B->>A: POST с Cookie __Host-session, __Host-csrf и X-CSRF-Token
     Note over A: X-CSRF-Token равен cookie
     A->>S: найти сессию по хешу session_id
-    S-->>A: user_id 42, время создания
+    S-->>A: user_id 7, время создания
     Note over A: абсолютный срок не истёк
     A->>S: продлить срок неактивности
-    A->>D: файл 42 принадлежит пользователю 42, создать блок
+    A->>D: файл 42 принадлежит пользователю 7, создать блок
     A-->>B: 201, созданный блок
     B-->>F: 201
 ```
@@ -297,20 +297,20 @@ Logout завершает сессию **на сервере**: запись у�
 
 ```text
 # вход
-SET session:{хеш} '{"user_id":42,"created_at":1767225600}' EX 604800
-SADD user_sessions:42 {хеш}
+SET session:{хеш} '{"user_id":7,"created_at":1767225600}' EX 604800
+SADD user_sessions:7 {хеш}
 
 # каждый запрос: прочитать и продлить срок неактивности одной командой
 GETEX session:{хеш} EX 604800
 
 # выход
 DEL session:{хеш}
-SREM user_sessions:42 {хеш}
+SREM user_sessions:7 {хеш}
 
 # выйти со всех устройств
-SMEMBERS user_sessions:42
+SMEMBERS user_sessions:7
 DEL session:{хеш 1} session:{хеш 2} ...
-DEL user_sessions:42
+DEL user_sessions:7
 ```
 
 В множестве могут остаться хеши сессий, которые уже истекли по TTL: `DEL` по ним просто ничего
@@ -445,11 +445,14 @@ export async function login(username, password) {
 }
 
 export async function logout() {
-  await api('/api/v1/auth/logout', {
+  const res = await api('/api/v1/auth/logout', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
+  // Отказ (403, 503): выход не случился, сессия жива — показать ошибку, состояние не сбрасывать.
+  if (!res.ok) return false;
   onSessionLost();
+  return true;
 }
 ```
 

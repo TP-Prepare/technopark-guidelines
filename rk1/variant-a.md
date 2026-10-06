@@ -317,8 +317,9 @@ func csrfMiddleware(next http.Handler) http.Handler {
 - **Токенов не касается.** Ни access, ни refresh код фронта не видит, в `localStorage`,
   `sessionStorage` и стор ничего не кладёт.
 - **Одна обёртка над `fetch`** для всех запросов к API: `credentials: 'include'` (при одном
-  origin cookie уходят и без него, но с ним обёртка работает и при отдельном API), заголовок
-  `X-CSRF-Token` на изменяющих методах, один refresh на все `401` и повтор запроса.
+  origin cookie уходят и без него, но с ним обёртка работает и при отдельном API), заголовки
+  `Content-Type: application/json` и `X-CSRF-Token` на изменяющих методах, один refresh на все
+  `401` и повтор запроса.
 - **`403` — не повод для refresh.** Это отказ CSRF-проверки или доступа: показать ошибку.
 - **Состояние «вошёл»** — из ответа `GET /api/v1/users/me` при старте приложения.
 
@@ -346,7 +347,10 @@ export async function api(path, options = {}) {
   const method = (options.method ?? 'GET').toUpperCase();
   const send = () => {
     const headers = { ...options.headers };
-    if (!['GET', 'HEAD'].includes(method)) headers['X-CSRF-Token'] = csrfToken();
+    if (!['GET', 'HEAD'].includes(method)) {
+      headers['Content-Type'] ??= 'application/json';
+      headers['X-CSRF-Token'] = csrfToken();
+    }
     return fetch(path, { ...options, headers, credentials: 'include' });
   };
 
@@ -365,6 +369,10 @@ export async function api(path, options = {}) {
 
 Ручки `/api/v1/auth/...` обёртка после `401` не продлевает: `401` на входе — неверный пароль, а
 `401` на refresh — конец сессии.
+
+`Content-Type: application/json` обёртка ставит на всех изменяющих методах — и у `logout` без
+тела: если сервер принимает на изменяющих ручках только JSON (настойчиво рекомендуется), запрос
+без этого заголовка он отклонит.
 
 ## Что может XSS и что может CSRF
 

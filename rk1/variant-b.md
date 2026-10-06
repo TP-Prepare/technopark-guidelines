@@ -202,10 +202,11 @@ sequenceDiagram
 вызывает refresh и только потом запрашивает профиль. Класть access в `localStorage` или
 `sessionStorage`, «чтобы пережить F5», — нарушение минимума: для этого и есть refresh-cookie.
 
-Несколько вкладок стартуют независимо и каждая делает свой refresh. С ротацией это выглядит как
-повтор использованного токена; как с этим жить — в
-[variant-a.md](variant-a.md#истёк-access-refresh-и-повтор) (короткое окно для только что
-заменённого токена).
+Несколько вкладок стартуют независимо и каждая делает свой refresh. Cookie у вкладок общие, так
+что refresh-запросы один за другим проходят спокойно. Повтором использованного токена при ротации
+выглядят только почти одновременные: обе вкладки успели отправить старую cookie, пока браузер не
+сохранил новую. Как с этим жить — в [variant-a.md](variant-a.md#истёк-access-refresh-и-повтор)
+(короткое окно для только что заменённого токена).
 
 ### Выход
 
@@ -379,8 +380,15 @@ export async function restoreSession() {
 }
 
 export async function logout() {
-  await fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'include' });
+  const res = await fetch('/api/v1/auth/logout', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  // Отказ (403, 503): выход не случился, refresh-cookie жива — показать ошибку, access не трогать.
+  if (!res.ok) return false;
   accessToken = null;
+  return true;
 }
 ```
 
