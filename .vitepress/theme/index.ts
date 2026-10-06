@@ -16,12 +16,14 @@ const theme: Theme = {
     const route = useRoute();
     let zoom: Zoom | undefined;
     const attach = () => {
-      zoom?.detach();
-      zoom = mediumZoom('.vp-doc img:not(.mermaid-diagram img)', {
-        background: 'var(--vp-c-bg)',
-      });
+      if (!zoom) return;
+      zoom.detach();
+      zoom.attach(...document.querySelectorAll<HTMLElement>('.vp-doc img'));
     };
-    onMounted(attach);
+    onMounted(() => {
+      zoom = mediumZoom({ background: 'var(--vp-c-bg)' });
+      attach();
+    });
     watch(
       () => route.path,
       () => nextTick(attach),
