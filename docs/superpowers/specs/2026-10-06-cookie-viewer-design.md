@@ -95,7 +95,7 @@ tools/
   `public/` в корень сайта). `dist/` и `public/cookie-viewer.zip` — в `.gitignore`.
 - `bun run typecheck` проверяет и корневой `tsconfig.json`, и `tools/cookie-viewer/tsconfig.json`.
 - Новая dev-зависимость: `@types/chrome` (публичный npm; `bun.lock` без URL).
-- Версия в `manifest.json` берётся из `package.json` при сборке — одна точка правды.
+- Версия — поле `version` в `manifest.json` (`0.1.0`); у `package.json` репозитория версии нет.
 
 ## 5. Сайт
 
