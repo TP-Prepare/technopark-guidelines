@@ -449,9 +449,11 @@ Application → Cookies, Network → запрос → Cookies, `document.cookie`
 - CSRF-cookie без `HttpOnly` (лучше с префиксом `__Host-`); фронт читает её и повторяет
   значение в заголовке `X-CSRF-Token`;
 - проверка на `POST`, `PUT`, `PATCH`, `DELETE`, включая login, register, refresh и logout; до
-  входа фронт получает cookie через `GET /api/v1/auth/csrf`; отказ — `403`;
+  входа cookie ставит middleware на любой ответ API без неё (например, на `401` стартового
+  `GET /api/v1/users/me`), отдельного запроса за токеном нет; отказ — `403`;
 - если API на отдельном origin, фронт не прочитает CSRF-cookie из `document.cookie`: сервер
-  отдаёт токен ещё и в теле `GET /api/v1/auth/csrf`, фронт держит его в памяти;
+  кладёт токен ещё и в заголовок ответа `X-CSRF-Token` (открыт через
+  `Access-Control-Expose-Headers`), фронт держит последнее значение в памяти;
 - `GET` не меняет данные и токен не проверяет;
 - фронт читает токен перед каждым запросом: после входа сервер выдаёт новый;
 - почему чужая страница не подделает: значение cookie она прочитать не может, форма не ставит
@@ -512,8 +514,8 @@ Application → Cookies, Network → запрос → Cookies, `document.cookie`
   его аккаунте, и её файлы оказываются у него;
 - `SameSite` не помогает: злоумышленнику не нужны cookie жертвы, а cookie из ответа на
   отправку формы браузер сохраняет при любом `SameSite`;
-- A и C: Double Submit на login и register (токен из `GET /api/v1/auth/csrf`); второй слой —
-  проверка `Origin` / `Sec-Fetch-Site` (настойчиво рекомендуется);
+- A и C: Double Submit на login и register (cookie с токеном пришла с ответом на стартовый
+  запрос к API); второй слой — проверка `Origin` / `Sec-Fetch-Site` (настойчиво рекомендуется);
 - B: CSRF-токена нет, основная защита — проверка `Origin` / `Sec-Fetch-Site` и только
   `Content-Type: application/json` на ручках входа;
 - токен до входа не привязан к пользователю, поэтому после входа сервер выдаёт новый. Плюс,
@@ -729,8 +731,8 @@ Application → Cookies, Network → запрос → Cookies, `document.cookie`
 
 **Засчитывается, если:**
 
-- logout удаляет на сервере сессию и все её refresh-записи и стирает три cookie (`Max-Age=0`,
-  то же имя и `Path`, `Secure`); старый refresh после этого получает `401`;
+- logout удаляет на сервере сессию и все её refresh-записи и стирает access- и refresh-cookie
+  (`Max-Age=0`, то же имя и `Path`, `Secure`); старый refresh после этого получает `401`;
 - access до своего `exp` формально валиден: сервер проверяет его по подписи и о выходе не
   знает — это «отзыв access по истечении TTL»; поэтому access короткий;
 - только почистить cookie на клиенте — нарушение минимума: скопированный refresh продолжил бы
@@ -873,8 +875,9 @@ Application → Cookies, Network → запрос → Cookies, `document.cookie`
   с `Path=/` или `__Secure-` с узким `Path`;
 - middleware ищет сессию, проверяет срок неактивности и абсолютный срок: нет или истекла —
   `401`, хранилище недоступно — `503`;
-- фронт: `credentials: 'include'`, `X-CSRF-Token` на изменяющих запросах, до входа —
-  `GET /api/v1/auth/csrf`; на `401` — страница входа без refresh и повтора; на `403` — ошибка.
+- фронт: `credentials: 'include'`, `X-CSRF-Token` на изменяющих запросах, CSRF-cookie до
+  входа приносит ответ на стартовый `GET /api/v1/users/me`; на `401` — страница входа без
+  refresh и повтора; на `403` — ошибка (кроме одного повтора входа, если cookie не было).
   Плюс за хеш `session_id` в хранилище вместо него самого.
 
 **Типичные неверные ответы:**
@@ -900,9 +903,10 @@ Application → Cookies, Network → запрос → Cookies, `document.cookie`
 
 **Засчитывается, если по своему варианту названы шаги:**
 
-- **регистрация и вход** — сервер валидирует поля, хеширует или сверяет пароль; в A и C до
-  этого `GET /api/v1/auth/csrf` и `X-CSRF-Token` на входе; в ответе — cookie с флагами (A, C)
-  или access в теле и refresh-cookie (B); после входа — новый CSRF-токен (A, C);
+- **регистрация и вход** — сервер валидирует поля, хеширует или сверяет пароль; в A и C
+  CSRF-cookie уже пришла с ответом на стартовый запрос к API, на входе — `X-CSRF-Token`; в
+  ответе — cookie с флагами (A, C) или access в теле и refresh-cookie (B); после входа — новый
+  CSRF-токен (A, C);
 - **страница файла** — `GET /api/v1/files/{id}` с access-cookie, `Authorization: Bearer` или
   cookie сессии; сервер узнаёт пользователя и проверяет владельца, чужой файл — `404`;
 - **новый блок** — `POST` с `Content-Type: application/json` и, в A и C, `X-CSRF-Token`;
@@ -911,8 +915,8 @@ Application → Cookies, Network → запрос → Cookies, `document.cookie`
   refresh, потом профиль;
 - **через час** — A и B: access истёк, `401` → refresh → повтор; C: сессия жива, если срок
   неактивности больше часа, иначе `401` и страница входа;
-- **выход** — сервер удаляет сессию или refresh-записи, cookie стираются; в A и B access живёт до
-  `exp`;
+- **выход** — сервер удаляет сессию или refresh-записи, авторизационные cookie стираются; в A
+  и B access живёт до `exp`;
 - если API на отдельном origin — preflight перед запросами с JSON, `X-CSRF-Token` или
   `Authorization` и `credentials: 'include'`.
 

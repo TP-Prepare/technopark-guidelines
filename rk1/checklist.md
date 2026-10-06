@@ -66,10 +66,11 @@
   `__Host-csrf={csrf}` и `-H 'X-CSRF-Token: {csrf}'` убираются: CSRF-cookie в варианте B нет.
 - Команды на вход и регистрацию в вариантах A и C идут с CSRF-токеном, полученным до входа:
   CSRF проверяется и на `POST /api/v1/auth/login` ([csrf.md](csrf.md#double-submit-cookie)).
-  Его берут так:
+  Любой ответ API на запрос без cookie ставит `__Host-csrf` — даже `401`. Токен берут из
+  `Set-Cookie` такого ответа; ручка может быть любой ручкой API, в примере — стартовая:
 
 ```bash
-curl -si https://example.ru/api/v1/auth/csrf | grep -i '^set-cookie: __host-csrf='
+curl -si https://example.ru/api/v1/users/me | grep -i '^set-cookie: __host-csrf='
 ```
 
 - В командах `alice` — логин Алисы; `wrong-pass-1` — заведомо неверный пароль, который при этом

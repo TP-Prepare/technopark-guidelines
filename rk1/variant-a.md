@@ -68,10 +68,14 @@ Set-Cookie: __Host-csrf={csrf}; Secure; SameSite=Lax; Path=/; Max-Age=2592000
   помешает: `example.ru` и `api.example.ru` — один site.
 - **Фронт не прочитает `__Host-csrf` из `document.cookie`.** Cookie без `Domain` принадлежит
   хосту `api.example.ru`, а `document.cookie` на странице `example.ru` показывает только cookie,
-  которые подходят к хосту и пути самой страницы. Поэтому сервер отдаёт CSRF-токен ещё и в теле ответа (например,
-  `GET /api/v1/auth/csrf` → `{"csrfToken": "..."}`), фронт держит его в памяти и после
-  перезагрузки запрашивает заново. Проверка на бэке не меняется: заголовок сравнивается с
-  cookie.
+  которые подходят к хосту и пути самой страницы. Поэтому `ensureCSRFCookie` (раздел
+  [«Бэк»](#бэк)) на каждом ответе кладёт текущее значение токена ещё и в заголовок ответа
+  `X-CSRF-Token`: из cookie запроса или только что выданное, а после входа и выхода обработчик
+  ставит туда новое. Сервер перечисляет этот заголовок в `Access-Control-Expose-Headers`
+  ([cors.md](cors.md#expose-headers-какие-заголовки-ответа-видит-js)). Фронт держит последнее
+  увиденное значение в памяти; после перезагрузки его вернёт стартовый `GET /api/v1/users/me`.
+  Прочитать заголовок может только origin из белого списка CORS — так же, как тело любого
+  ответа API. Проверка на бэке не меняется: заголовок запроса сравнивается с cookie.
 
 Дальше в файле — вариант с одним origin.
 
@@ -91,10 +95,13 @@ sequenceDiagram
     participant B as Браузер
     participant A as API
     participant D as БД
-    F->>B: fetch GET /api/v1/auth/csrf
-    B->>A: GET
-    A-->>B: 204, Set-Cookie __Host-csrf
-    B-->>F: 204
+    Note over F: старт приложения, пользователь ещё не вошёл
+    F->>B: fetch GET /api/v1/users/me
+    B->>A: GET без cookie
+    A-->>B: 401, Set-Cookie __Host-csrf
+    Note over B: сохраняет __Host-csrf
+    B-->>F: 401
+    Note over F: не вошёл, показать форму входа
     F->>B: читает __Host-csrf из document.cookie
     F->>B: fetch POST /api/v1/auth/login, логин и пароль, X-CSRF-Token
     B->>A: POST с Cookie __Host-csrf и X-CSRF-Token
@@ -106,12 +113,16 @@ sequenceDiagram
 ```
 
 CSRF-cookie нужна ещё до входа: `POST /api/v1/auth/login` — изменяющий запрос, и Double
-Submit проверяет его так же, как остальные. Сервер может ставить её отдельной ручкой, как здесь,
-или на любой ответ, если cookie у браузера ещё нет. После входа сервер выдаёт новый CSRF-токен
-(«новый __Host-csrf» в диаграмме): токен, полученный до входа, не переживает смену
+Submit проверяет его так же, как остальные. Её ставит middleware `ensureCSRFCookie` на любой
+ответ API, если в запросе cookie ещё нет, — даже на `401`, как здесь. Отдельная ручка за
+токеном не нужна: это лишний запрос и лишний шаг на фронте, а стартовый запрос всё равно есть.
+Если cookie всё же не оказалось (её удалили в другой вкладке), вход ответит `403`, но этот же
+ответ принесёт новую cookie — фронт один раз повторяет запрос. После входа сервер выдаёт новый
+CSRF-токен («новый __Host-csrf» в диаграмме): токен, полученный до входа, не переживает смену
 пользователя. В требованиях это опция «по желанию» («Новый CSRF-токен при login, refresh,
-logout»), в варианте A делаем её всегда — это одна строка. Проверка `Origin` /
-`Sec-Fetch-Site` на login, register, refresh — второй слой (настойчиво рекомендуется).
+logout»), в варианте A делаем её при входе и выходе всегда — это одна строка. Проверка
+`Origin` / `Sec-Fetch-Site` на login, register, refresh — второй слой (настойчиво
+рекомендуется).
 
 ### Обычный запрос
 
@@ -218,14 +229,16 @@ sequenceDiagram
     B->>A: POST с Cookie __Secure-refresh, access_token, __Host-csrf
     Note over A: X-CSRF-Token равен cookie
     A->>D: удалить сессию и все её refresh-записи
-    A-->>B: 204, Set-Cookie трёх cookie с Max-Age 0
-    Note over B: удаляет cookie
+    A-->>B: 204, Set-Cookie access_token и __Secure-refresh с Max-Age 0, новый __Host-csrf
+    Note over B: удаляет access и refresh, сохраняет новый CSRF-токен
     B-->>F: 204
     Note over F: сбросить состояние, открыть страницу входа
 ```
 
 Logout завершает сессию **на сервере**: записи refresh удалены, и старый refresh-токен больше не
 продлит сессию, даже если его скопировали. Только почистить cookie — нарушение минимума.
+`__Host-csrf` logout не стирает, а заменяет новым анонимным токеном: следующий вход сразу
+пройдёт Double Submit.
 
 Access-токен до своего `exp` формально остаётся валидным: сервер проверяет его по подписи и не
 знает о выходе. Это и есть «отзыв access — по истечении TTL» из сравнения вариантов; поэтому
@@ -240,15 +253,15 @@ access живёт не больше 15 минут. Ручка logout наход�
 
 | Ручка | Что делает |
 |---|---|
-| `GET /api/v1/auth/csrf` | ставит `__Host-csrf`, если её нет |
 | `POST /api/v1/auth/register`, `POST /api/v1/auth/login` | проверяет данные, при успехе ставит три cookie, сохраняет хеш refresh |
 | `POST /api/v1/auth/refresh` | проверяет refresh по хешу в БД, выдаёт новые access и refresh; старый помечает использованным, повтор использованного — отзыв всей сессии |
-| `POST /api/v1/auth/logout` | удаляет сессию и её refresh-записи, стирает три cookie |
+| `POST /api/v1/auth/logout` | удаляет сессию и её refresh-записи, стирает access и refresh, ставит новый `__Host-csrf` |
 | `GET /api/v1/users/me` | профиль текущего пользователя по access |
 
-Порядок middleware: CORS (если API на другом origin) → CSRF на `POST`, `PUT`, `PATCH`, `DELETE`
-→ проверка access на защищённых ручках → обработчик, который проверяет владельца ресурса
-([access-control.md](access-control.md)).
+Порядок middleware: CORS (если API на другом origin) → `ensureCSRFCookie` на всех ручках API →
+CSRF на `POST`, `PUT`, `PATCH`, `DELETE` → проверка access на защищённых ручках → обработчик,
+который проверяет владельца ресурса ([access-control.md](access-control.md)). `ensureCSRFCookie`
+стоит раньше проверок, поэтому cookie приходит и с ответом `401`, `403` или `404`.
 
 - **Access.** JWT с `sub` и `exp`, подпись проверяется на каждом запросе, алгоритм зафиксирован,
   ключ — в переменной окружения ([basics.md](basics.md#подпись-не-шифрует)). Нет cookie,
@@ -293,6 +306,18 @@ func newToken() string {
 	return base64.RawURLEncoding.EncodeToString(b)
 }
 
+func ensureCSRFCookie(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, err := r.Cookie("__Host-csrf"); err != nil && r.Method != http.MethodOptions {
+			http.SetCookie(w, &http.Cookie{
+				Name: "__Host-csrf", Value: newToken(), Path: "/", MaxAge: 30 * 24 * 60 * 60,
+				Secure: true, SameSite: http.SameSiteLaxMode, // без HttpOnly: фронт читает
+			})
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func csrfMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -321,6 +346,7 @@ func csrfMiddleware(next http.Handler) http.Handler {
   `Content-Type: application/json` и `X-CSRF-Token` на изменяющих методах, один refresh на все
   `401` и повтор запроса.
 - **`403` — не повод для refresh.** Это отказ CSRF-проверки или доступа: показать ошибку.
+  Исключение — вход без CSRF-cookie: его повторяют один раз ([«Вход»](#вход)).
 - **Состояние «вошёл»** — из ответа `GET /api/v1/users/me` при старте приложения.
 
 ```js
@@ -414,7 +440,7 @@ export async function api(path, options = {}) {
 
 - Подпись токена HMAC с привязкой к пользователю или сессии
 - Проверка `Origin` / `Sec-Fetch-Site` на всех изменяющих запросах
-- Новый CSRF-токен при login, refresh, logout (в варианте A — при входе всегда)
+- Новый CSRF-токен при login, refresh, logout (в варианте A — при входе и выходе всегда)
 - `SameSite=Strict` у авторизационных cookie
 - Нет пользовательского HTML/SVG на поддоменах (`Content-Type` загрузок, CSP)
 
