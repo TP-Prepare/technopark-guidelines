@@ -1,0 +1,23 @@
+.vp-doc details {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  padding: 16px;
+  background-color: var(--vp-custom-block-details-bg);
+  margin: 16px 0;
+}
+
+.vp-doc summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.dark .vp-doc img:not(.mermaid-diagram img) {
+  background: #fff;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.medium-zoom-overlay,
+.medium-zoom-image--opened {
+  z-index: 100;
+}
