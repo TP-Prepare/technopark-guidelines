@@ -82,6 +82,7 @@ Set-Cookie: __Secure-refresh={значение}; HttpOnly; Secure; SameSite=Lax;
   появится там после первого запроса на `/api/v1/auth/...`, а в Network → запрос → Cookies она
   видна у каждого запроса, к которому приложена. Если её не видно в Application — это
   особенность панели, а не защита.
+  Все cookie домена сразу показывает расширение [«Все cookie»](../tools/cookie-viewer.md).
 - **`Domain` расширяет, а не сужает.** Поставить `Domain=example.ru` — значит отдать cookie
   и `avatars.example.ru`, и любому будущему поддомену.
 - **Cookie не различают порты.** `localhost:5173` и `localhost:8080` видят одни и те же cookie,

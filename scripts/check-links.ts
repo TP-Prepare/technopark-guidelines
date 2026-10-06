@@ -9,11 +9,12 @@ export { githubSlug } from "./slug.ts";
 
 const EXCLUDED = ["scripts/fixtures/", "node_modules/", ".claude/", "docs/"];
 
-// README.md, CLAUDE.md в корне и rk*/**/*.md. Пути с "/" на любой платформе.
+// README.md, CLAUDE.md в корне, rk*/**/*.md и tools/*.md (без вложенных папок). Пути с "/" на любой платформе.
 export function markdownFiles(root = "."): string[] {
   const found = [
     ...new Bun.Glob("{README,CLAUDE}.md").scanSync(root),
     ...new Bun.Glob("rk*/**/*.md").scanSync(root),
+    ...new Bun.Glob("tools/*.md").scanSync(root),
   ].map((name) => name.replaceAll("\\", "/"));
   return [...new Set(found)].filter((name) => !EXCLUDED.some((prefix) => name.startsWith(prefix))).sort();
 }
@@ -90,6 +91,8 @@ export async function checkLinks(
   };
   for (const file of files) {
     for (const { target, line } of extractLinks(await read(file))) {
+      // Ссылки от корня сайта (/cookie-viewer.zip) ведут в собранный сайт: их проверяет site:check.
+      if (target.startsWith("/")) continue;
       const hashAt = target.indexOf("#");
       const rawPath = hashAt === -1 ? target : target.slice(0, hashAt);
       const anchor = hashAt === -1 ? "" : decode(target.slice(hashAt + 1)).toLowerCase();

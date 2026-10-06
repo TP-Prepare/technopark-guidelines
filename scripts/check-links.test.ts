@@ -45,15 +45,20 @@ test("githubSlug: emphasis markers stripped, snake_case kept", () => {
   expect(githubSlug("Кука `__Host-csrf`")).toBe("кука-__host-csrf");
 });
 
-test("markdownFiles: only README/CLAUDE and rk*, excludes fixtures and tool dirs", () => {
+test("markdownFiles: README/CLAUDE, rk* and tools/*.md, excludes fixtures, tool dirs and tools subfolders", () => {
   const root = mkdtempSync(join(tmpdir(), "mdfiles-"));
   try {
-    for (const f of ["README.md", "rk1/a.md", "rk1/sub/b.md", "scripts/fixtures/x.md", "docs/y.md", "node_modules/z.md", ".claude/w.md"]) {
+    for (const f of ["README.md", "rk1/a.md", "rk1/sub/b.md", "scripts/fixtures/x.md", "docs/y.md", "node_modules/z.md", ".claude/w.md", "tools/README.md", "tools/cookie-viewer.md", "tools/cookie-viewer/src/n.md"]) {
       mkdirSync(dirname(join(root, f)), { recursive: true });
       writeFileSync(join(root, f), "# x\n");
     }
-    expect(markdownFiles(root)).toEqual(["README.md", "rk1/a.md", "rk1/sub/b.md"]);
+    expect(markdownFiles(root)).toEqual(["README.md", "rk1/a.md", "rk1/sub/b.md", "tools/README.md", "tools/cookie-viewer.md"]);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("checkLinks: site-absolute links are skipped (verified on the built site)", async () => {
+  const problems = await checkLinks(["a.md"], async () => "[zip](/cookie-viewer.zip) [x](missing.md)\n", () => false);
+  expect(problems).toEqual(["a.md:1 broken link missing.md"]);
 });
