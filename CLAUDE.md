@@ -40,6 +40,8 @@ Markdown. Обзор и команды — `README.md`.
 - Расширение `tools/cookie-viewer/` собирается `bun run ext:build` в `dist/`, архив для сайта —
   `bun run ext:zip` в `public/cookie-viewer.zip`; оба в `.gitignore`. В `tools/cookie-viewer/`
   нет `.md` (иначе файл станет страницей сайта); страницы раздела — `tools/*.md`.
+  Изменили `tools/cookie-viewer/` — поднимите `version` в `manifest.json`: CI выпустит релиз
+  `cookie-viewer-v<version>` после мержа; без смены версии релиза не будет.
 
 - Сайт (VitePress): `bun run site:dev`, `bun run site:build && bun run site:check`,
   `bun run site:preview`. Новая страница РК — в `pages` реестра `.vitepress/rk.ts`, иначе падает
