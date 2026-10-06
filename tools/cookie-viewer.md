@@ -14,6 +14,8 @@ Application → Cookies в Chrome показывает cookie только дл�
 `Secure`, `SameSite`, `Path`, сроком жизни. Значения по умолчанию скрыты: полное видно после клика
 по ячейке, чтобы токен не оказался на общем экране на защите.
 
+![Вкладка «Все cookie»: access_token и csrf_token с Path=/, refresh_token с Path=/api/v1/auth выделен, значения скрыты](cookie-viewer-panel.png)
+
 ## Скачать
 
 [Скачать cookie-viewer.zip](/cookie-viewer.zip)
