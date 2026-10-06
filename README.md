@@ -29,6 +29,11 @@
 порядку и что нужно ментору. Остальные файлы ссылаются друг на друга, поэтому читать подряд всё
 не обязательно.
 
+## Сайт
+
+Материалы читаются и на сайте: https://tp-prepare.github.io/technopark-guidelines/. Он
+собирается из этих же файлов при каждом merge в `main`, отдельного контента у сайта нет.
+
 ## Как предложить правку
 
 Нашли ошибку, устаревший пример или непонятное место — напишите. Студенты тоже могут: если
@@ -72,8 +77,27 @@ bun install
 
 ```bash
 bun run typecheck && bun run test && bun run validate && bun run check \
-  && bun run fresh && bun run links && bun run mermaid
+  && bun run fresh && bun run links && bun run mermaid && bun run site:build && bun run site:check
 ```
 
 `links` проверяет относительные ссылки и якоря между `.md`, `mermaid` — что каждая диаграмма
-собирается. Подробнее о правилах репозитория — в [CLAUDE.md](https://github.com/TP-Prepare/technopark-guidelines/blob/main/CLAUDE.md).
+собирается. `site:build` собирает сайт, `site:check` проверяет собранное: ссылки, якоря и картинки.
+
+Сайт на VitePress. Локально:
+
+```bash
+bun run site:dev      # http://localhost:5173/technopark-guidelines/
+bun run site:build && bun run site:check
+bun run site:preview  # http://localhost:4173/technopark-guidelines/, после site:build
+```
+
+Как добавить РК:
+
+1. Создайте папку `rkN/` с `README.md` и остальными файлами.
+2. Добавьте запись в `.vitepress/rk.ts`: `dir`, `title`, `nav`, `pages`; первая страница — `README`.
+3. Добавьте строку в таблицу «Рубежные контроли» в этом файле.
+
+Папка, которой нет в реестре, на сайт не попадает: черновики можно держать в `main`. Страница,
+не перечисленная в `pages`, роняет `bun test`.
+
+Подробнее о правилах репозитория — в [CLAUDE.md](https://github.com/TP-Prepare/technopark-guidelines/blob/main/CLAUDE.md).
