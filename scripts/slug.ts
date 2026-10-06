@@ -8,7 +8,7 @@ const EMPHASIS_PAIRS: RegExp[] = [
   /(?<![\p{L}\p{N}])_(?=\S)(.+?)(?<=\S)_(?![\p{L}\p{N}])/gu,
 ];
 
-function stripEmphasis(text: string): string {
+export function stripEmphasis(text: string): string {
   return text
     .split(/(`[^`]*`)/)
     .map((part, index) => (index % 2 === 1 ? part : EMPHASIS_PAIRS.reduce((acc, re) => acc.replace(re, "$1"), part)))

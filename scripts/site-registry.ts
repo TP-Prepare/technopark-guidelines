@@ -2,10 +2,22 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Rk } from "../.vitepress/rk.ts";
+import { stripEmphasis } from "./slug.ts";
 
 type Link = { text: string; link: string };
 
-// Текст первой строки "# " вне блоков кода, обратные кавычки убраны.
+function plainTitle(raw: string): string {
+  return stripEmphasis(raw.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1"))
+    .replaceAll("`", "")
+    .replace(/\\([!-/:-@[-`{-~])/g, "$1");
+}
+
+// Заголовок идёт в меню через v-html, поэтому разметка в нём должна быть текстом.
+function escapeHtml(text: string): string {
+  return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+}
+
+// Текст первой строки "# " вне блоков кода: ссылки, выделение, обратные кавычки и экранирование убраны.
 export function pageTitle(md: string): string | undefined {
   let fence: string | undefined;
   for (const line of md.split(/\r?\n/)) {
@@ -16,8 +28,8 @@ export function pageTitle(md: string): string | undefined {
       continue;
     }
     if (fence) continue;
-    const match = /^# +(.+?)\s*#*\s*$/.exec(line);
-    if (match?.[1]) return match[1].replaceAll("`", "");
+    const match = /^# +(.+?)(?:\s+#+)?\s*$/.exec(line);
+    if (match?.[1]) return plainTitle(match[1]);
   }
   return undefined;
 }
@@ -84,7 +96,7 @@ export function sidebars(rks: Rk[], root: string): Record<string, { text: string
         {
           text: rk.title,
           items: rk.pages.map((page) => ({
-            text: pageTitle(readFileSync(join(root, rk.dir, `${page}.md`), "utf8")) ?? page,
+            text: escapeHtml(pageTitle(readFileSync(join(root, rk.dir, `${page}.md`), "utf8")) ?? page),
             link: page === "README" ? `/${rk.dir}/` : `/${rk.dir}/${page}`,
           })),
         },

@@ -27,3 +27,12 @@ test('sidebars: titles from files, README is overview', () =>
 test('real registry is valid', () => expect(registryProblems(rks, '.')).toEqual([]));
 test('registryProblems: page without heading', () =>
   expect(registryProblems([{ ...ok[0]!, pages: ['README'] }], 'scripts/fixtures/site-notitle')).toEqual(['rk1/README.md: нет заголовка #']));
+test('sidebars: HTML in title is escaped', () =>
+  expect(sidebars([{ ...ok[0]!, pages: ['README'] }], 'scripts/fixtures/site-escape')['/rk1/']![0]!.items[0]!.text)
+    .toBe('Тег &lt;script&gt;alert(1)&lt;/script&gt; и A&amp;B'));
+test('pageTitle: markdown markup removed', () => {
+  expect(pageTitle('# Это **важно** и _так_ [ссылка](http://x.y/z)')).toBe('Это важно и так ссылка');
+  expect(pageTitle('# Заголовок \\#')).toBe('Заголовок #');
+  expect(pageTitle('# Язык C# ##')).toBe('Язык C#');
+  expect(pageTitle('# snake_case_name и 2 * 3')).toBe('snake_case_name и 2 * 3');
+});
