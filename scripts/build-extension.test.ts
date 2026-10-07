@@ -27,7 +27,7 @@ test("built manifest asks no site access at install", () => {
   const m = readJson(join(out, "manifest.json"));
   expect(m.manifest_version).toBe(3);
   expect(m.name).toBe("Все cookie — Гайдлайны Технопарка");
-  expect(m.version).toBe("0.1.0");
+  expect(m.version).toBe(readJson(join(src, "manifest.json")).version);
   expect(m.permissions).toEqual(["cookies"]);
   expect(m.host_permissions).toBeUndefined();
   expect(m.optional_host_permissions).toEqual(["*://*/*"]);

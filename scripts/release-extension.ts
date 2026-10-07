@@ -26,7 +26,7 @@ export function releaseNotes(version: string, commits: string[]): string {
 
 Подробно, со скриншотом: https://tp-prepare.github.io/technopark-guidelines/tools/cookie-viewer
 
-Работает в Chrome и браузерах на Chromium (Edge, Яндекс Браузер, Brave). Только чтение: расширение ничего не меняет и никуда не отправляет, доступ к сайту выдаётся по кнопке для каждого домена.
+Работает в Chrome и браузерах на Chromium (Edge, Яндекс Браузер, Brave). Читает и удаляет cookie: ничего не записывает и никуда не отправляет, доступ к сайту выдаётся по кнопке для каждого домена.
 
 ## Изменения
 
