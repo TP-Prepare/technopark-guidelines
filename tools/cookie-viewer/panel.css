@@ -124,3 +124,33 @@ td.value.masked {
 td.flag {
   text-align: center;
 }
+
+td.remove-cell {
+  width: 1%;
+  text-align: center;
+}
+
+.remove {
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.remove:hover,
+.remove:focus-visible {
+  color: var(--error);
+}
+
+.remove:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.message.notice {
+  margin: 0 0 8px;
+}

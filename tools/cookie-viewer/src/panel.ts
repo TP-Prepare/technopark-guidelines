@@ -1,12 +1,27 @@
-/** Вкладка «Все cookie»: адрес страницы → домены → разрешение → cookie. Только чтение. */
-import { accessErrorLine, type CookieRow, defaultDomain, domainsFor, originsFor, readErrorLine, sortCookies } from './cookies.ts';
-import { cookieTable, emptyScreen, errorScreen, fillDomains, notHttpScreen, permissionScreen, rowKey } from './view.ts';
+/** Вкладка «Все cookie»: адрес страницы → домены → разрешение → cookie. Читает и удаляет cookie, ничего не записывает. */
+import {
+  accessErrorLine,
+  alsoRemovedLine,
+  type CookieRow,
+  defaultDomain,
+  diffRemoved,
+  domainsFor,
+  notRemovedLine,
+  originsFor,
+  readErrorLine,
+  removalUrl,
+  removeAllLine,
+  rowKey,
+  sortCookies,
+} from './cookies.ts';
+import { cookieTable, emptyScreen, errorScreen, fillDomains, noticeLine, notHttpScreen, permissionScreen } from './view.ts';
 
 const REFRESH_INTERVAL_MS = 300;
 
 const byId = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const domainSelect = byId<HTMLSelectElement>('domain');
 const refreshButton = byId<HTMLButtonElement>('refresh');
+const removeAllButton = byId<HTMLButtonElement>('remove-all');
 const showValues = byId<HTMLInputElement>('show-values');
 const content = byId<HTMLElement>('content');
 
@@ -19,21 +34,27 @@ const state = {
   rows: [] as CookieRow[],
   showAll: false,
   revealed: new Set<string>(),
+  /** Сообщение об удалении; автообновление его не стирает. */
+  notice: '',
+  /** Идёт удаление: кнопки удаления неактивны, автообновление ждёт. */
+  busy: false,
 };
 
 /** Номер последнего чтения: ответы от устаревших чтений отбрасываются. */
 let generation = 0;
 let pendingRefresh: ReturnType<typeof setTimeout> | undefined;
 
-function show(screen: Screen, node: HTMLElement): void {
+function show(screen: Screen, ...nodes: HTMLElement[]): void {
   state.screen = screen;
-  content.replaceChildren(node);
+  content.replaceChildren(...nodes);
+  removeAllButton.disabled = screen !== 'cookies' || state.rows.length === 0 || state.busy || domainSelect.disabled;
 }
 
 function setToolbarEnabled(enabled: boolean): void {
   domainSelect.disabled = !enabled;
   refreshButton.disabled = !enabled;
   showValues.disabled = !enabled;
+  if (!enabled) removeAllButton.disabled = true;
 }
 
 function toRow(cookie: chrome.cookies.Cookie): CookieRow {
@@ -68,7 +89,10 @@ function inSelectedDomain(cookieDomain: string): boolean {
 }
 
 function selectDomain(domain: string): void {
-  if (domain !== state.domain) state.revealed.clear();
+  if (domain !== state.domain) {
+    state.revealed.clear();
+    state.notice = '';
+  }
   state.domain = domain;
 }
 
@@ -91,12 +115,78 @@ function applyUrl(href: string | undefined): void {
 }
 
 function renderCookies(): void {
+  const notice = state.notice === '' ? [] : [noticeLine(state.notice)];
   if (state.rows.length === 0) {
-    show('cookies', emptyScreen(state.domain));
+    show('cookies', ...notice, emptyScreen(state.domain));
     return;
   }
   const isShown = (row: CookieRow): boolean => state.showAll || state.revealed.has(rowKey(row));
-  show('cookies', cookieTable(state.rows, isShown, toggleValue));
+  show('cookies', ...notice, cookieTable(state.rows, isShown, toggleValue, (row) => void removeCookie(row), state.busy));
+}
+
+/**
+ * Удаление в рамке: свежий список до, `remove`, свежий список после. Пока идёт удаление, кнопки
+ * неактивны и автообновление не стартует; смена домена или «Обновить» отменяют результат.
+ */
+async function withRemoval(run: (domain: string) => Promise<{ after: CookieRow[]; notice: string }>): Promise<void> {
+  if (state.busy) return;
+  state.busy = true;
+  renderCookies();
+  const domain = state.domain;
+  const current = ++generation;
+  const stale = (): boolean => current !== generation || domain !== state.domain;
+  try {
+    const { after, notice } = await run(domain);
+    state.busy = false;
+    if (stale()) return;
+    state.rows = sortCookies(after);
+    state.notice = notice;
+  } catch (error) {
+    state.busy = false;
+    if (stale()) return;
+    show('error', errorScreen(readErrorLine(error)));
+    return;
+  } finally {
+    state.busy = false;
+    // Результат отменён или готов: перерисовать таблицу, чтобы кнопки удаления снова стали активны.
+    if (state.screen === 'cookies') renderCookies();
+  }
+}
+
+const readRows = async (domain: string): Promise<CookieRow[]> => (await chrome.cookies.getAll({ domain })).map(toRow);
+
+/** Ошибка `remove` не бросается: итог виден по списку после. */
+async function removeOne(row: CookieRow): Promise<unknown> {
+  try {
+    await chrome.cookies.remove({ url: removalUrl(row), name: row.name });
+    return undefined;
+  } catch (error) {
+    return error ?? 'неизвестная ошибка';
+  }
+}
+
+function removeCookie(row: CookieRow): Promise<void> {
+  return withRemoval(async (domain) => {
+    const before = await readRows(domain);
+    const error = await removeOne(row);
+    const after = await readRows(domain);
+    const { removed, alsoRemoved } = diffRemoved(before, after, row);
+    const notice = !removed ? notRemovedLine(row, error) : alsoRemoved.length > 0 ? alsoRemovedLine(alsoRemoved) : '';
+    return { after, notice };
+  });
+}
+
+function removeAll(): Promise<void> {
+  return withRemoval(async (domain) => {
+    const before = await readRows(domain);
+    let firstError: unknown;
+    for (const row of before) {
+      const error = await removeOne(row);
+      if (firstError === undefined) firstError = error;
+    }
+    const after = await readRows(domain);
+    return { after, notice: after.length > 0 ? removeAllLine(after.length, before.length, firstError) : '' };
+  });
 }
 
 function toggleValue(row: CookieRow): void {
@@ -144,7 +234,7 @@ async function refresh(): Promise<void> {
 
 /** Автообновление: не чаще раза в 300 мс и только когда таблица уже на экране. */
 function scheduleRefresh(): void {
-  if (state.screen !== 'cookies' || pendingRefresh !== undefined) return;
+  if (state.screen !== 'cookies' || state.busy || pendingRefresh !== undefined) return;
   pendingRefresh = setTimeout(() => {
     pendingRefresh = undefined;
     void refresh();
@@ -155,7 +245,11 @@ domainSelect.addEventListener('change', () => {
   selectDomain(domainSelect.value);
   void refresh();
 });
-refreshButton.addEventListener('click', () => void refresh());
+refreshButton.addEventListener('click', () => {
+  state.notice = '';
+  void refresh();
+});
+removeAllButton.addEventListener('click', () => void removeAll());
 showValues.addEventListener('change', () => {
   state.showAll = showValues.checked;
   if (state.screen === 'cookies') renderCookies();
