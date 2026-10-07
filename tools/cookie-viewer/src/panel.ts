@@ -10,9 +10,12 @@ import {
   originsFor,
   readErrorLine,
   removalUrl,
+  outsideRemovedLine,
   removeAllLine,
+  removeAllOutcome,
   rowKey,
   sortCookies,
+  uniqueRows,
 } from './cookies.ts';
 import { cookieTable, emptyScreen, errorScreen, fillDomains, noticeLine, notHttpScreen, permissionScreen } from './view.ts';
 
@@ -131,6 +134,10 @@ function renderCookies(): void {
 async function withRemoval(run: (domain: string) => Promise<{ after: CookieRow[]; notice: string }>): Promise<void> {
   if (state.busy) return;
   state.busy = true;
+  // Взведённое автообновление вытеснило бы результат: удаление само читает свежий список.
+  clearTimeout(pendingRefresh);
+  pendingRefresh = undefined;
+  state.notice = '';
   renderCookies();
   const domain = state.domain;
   const current = ++generation;
@@ -155,6 +162,13 @@ async function withRemoval(run: (domain: string) => Promise<{ after: CookieRow[]
 
 const readRows = async (domain: string): Promise<CookieRow[]> => (await chrome.cookies.getAll({ domain })).map(toRow);
 
+/**
+ * Cookie, которые Chrome удалит вместе со строкой: то же имя, ушли бы на её адрес. Сюда попадает и
+ * cookie родительского домена, которой нет в таблице выбранного поддомена.
+ */
+const readNear = async (row: CookieRow): Promise<CookieRow[]> =>
+  (await chrome.cookies.getAll({ url: removalUrl(row), name: row.name })).map(toRow);
+
 /** Ошибка `remove` не бросается: итог виден по списку после. */
 async function removeOne(row: CookieRow): Promise<unknown> {
   try {
@@ -167,10 +181,10 @@ async function removeOne(row: CookieRow): Promise<unknown> {
 
 function removeCookie(row: CookieRow): Promise<void> {
   return withRemoval(async (domain) => {
-    const before = await readRows(domain);
+    const before = await readNear(row);
     const error = await removeOne(row);
+    const { removed, alsoRemoved } = diffRemoved(before, await readNear(row), row);
     const after = await readRows(domain);
-    const { removed, alsoRemoved } = diffRemoved(before, after, row);
     const notice = !removed ? notRemovedLine(row, error) : alsoRemoved.length > 0 ? alsoRemovedLine(alsoRemoved) : '';
     return { after, notice };
   });
@@ -178,14 +192,21 @@ function removeCookie(row: CookieRow): Promise<void> {
 
 function removeAll(): Promise<void> {
   return withRemoval(async (domain) => {
-    const before = await readRows(domain);
+    const table = await readRows(domain);
+    const readAllNear = async (): Promise<CookieRow[]> => (await Promise.all(table.map(readNear))).flat();
+    const before = uniqueRows([...table, ...(await readAllNear())]);
     let firstError: unknown;
-    for (const row of before) {
+    for (const row of table) {
       const error = await removeOne(row);
       if (firstError === undefined) firstError = error;
     }
     const after = await readRows(domain);
-    return { after, notice: after.length > 0 ? removeAllLine(after.length, before.length, firstError) : '' };
+    const { left, outsideRemoved } = removeAllOutcome(table, before, uniqueRows([...after, ...(await readAllNear())]));
+    const lines = [
+      left > 0 ? removeAllLine(left, table.length, firstError) : '',
+      outsideRemoved.length > 0 ? outsideRemovedLine(outsideRemoved) : '',
+    ];
+    return { after, notice: lines.filter((line) => line !== '').join(' ') };
   });
 }
 

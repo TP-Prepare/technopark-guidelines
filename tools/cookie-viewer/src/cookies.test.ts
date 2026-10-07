@@ -11,11 +11,14 @@ import {
   maskValue,
   originsFor,
   notRemovedLine,
+  outsideRemovedLine,
   readErrorLine,
   removalUrl,
   removeAllLine,
+  removeAllOutcome,
   rowKey,
   sortCookies,
+  uniqueRows,
   type CookieRow,
 } from './cookies.ts';
 
@@ -129,4 +132,25 @@ test('тексты удаления', () => {
   );
   expect(removeAllLine(2, 5)).toBe('Не удалось удалить 2 из 5.');
   expect(removeAllLine(2, 5, 'boom')).toBe('Не удалось удалить 2 из 5: boom.');
+});
+
+test('uniqueRows: без повторов по rowKey, в порядке первого появления', () => {
+  const a = r('example.ru', '/', 'a');
+  const b = r('example.ru', '/', 'b');
+  expect(uniqueRows([a, b, { ...a }, b])).toEqual([a, b]);
+});
+
+test('removeAllOutcome: сколько осталось из таблицы и что удалено вне домена', () => {
+  const parent = r('.example.ru', '/', 'a');
+  const host = r('app.example.ru', '/', 'a');
+  const other = r('app.example.ru', '/', 'c');
+  const fresh = r('app.example.ru', '/', 'new');
+  expect(removeAllOutcome([host, other], [host, other, parent], [])).toEqual({ left: 0, outsideRemoved: [parent] });
+  expect(removeAllOutcome([host, other], [host, other, parent], [other, parent, fresh])).toEqual({ left: 1, outsideRemoved: [] });
+});
+
+test('outsideRemovedLine', () => {
+  expect(outsideRemovedLine([r('.example.ru', '/', 'a')])).toBe(
+    'Chrome удалил также cookie вне выбранного домена: a (.example.ru, Path=/). API удаляет все cookie с этим именем, которые ушли бы на адрес удаляемой.',
+  );
 });

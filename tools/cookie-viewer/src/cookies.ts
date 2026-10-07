@@ -154,3 +154,36 @@ export function notRemovedLine(row: CookieRow, error?: unknown): string {
 export function removeAllLine(left: number, total: number, error?: unknown): string {
   return `Не удалось удалить ${left} из ${total}${withError(error)}`;
 }
+
+/** Без повторов по `rowKey`, в порядке первого появления. */
+export function uniqueRows(rows: CookieRow[]): CookieRow[] {
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    const key = rowKey(row);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/**
+ * Итог «Удалить все»: сколько строк таблицы осталось (новые cookie страницы не считаются) и какие
+ * cookie вне выбранного домена исчезли. `before` — таблица и cookie, которые Chrome мог удалить заодно.
+ */
+export function removeAllOutcome(
+  table: CookieRow[],
+  before: CookieRow[],
+  after: CookieRow[],
+): { left: number; outsideRemoved: CookieRow[] } {
+  const inTable = new Set(table.map(rowKey));
+  const left = new Set(after.map(rowKey));
+  return {
+    left: table.filter((row) => left.has(rowKey(row))).length,
+    outsideRemoved: before.filter((row) => !inTable.has(rowKey(row)) && !left.has(rowKey(row))),
+  };
+}
+
+/** Сообщение, когда «Удалить все» задело cookie родительского домена. */
+export function outsideRemovedLine(rows: CookieRow[]): string {
+  return `Chrome удалил также cookie вне выбранного домена: ${rows.map(cookieLabel).join(', ')}. API удаляет все cookie с этим именем, которые ушли бы на адрес удаляемой.`;
+}
