@@ -117,7 +117,8 @@ Submit проверяет его так же, как остальные. Её с
 ответ API, если в запросе cookie ещё нет, — даже на `401`, как здесь. Отдельная ручка за
 токеном не нужна: это лишний запрос и лишний шаг на фронте, а стартовый запрос всё равно есть.
 Если cookie всё же не оказалось (её удалили в другой вкладке), вход ответит `403`, но этот же
-ответ принесёт новую cookie — фронт один раз повторяет запрос. После входа сервер выдаёт новый
+ответ принесёт новую cookie — фронт один раз повторяет запрос. Так же повторяется любой
+изменяющий запрос ([csrf.md](csrf.md#повтор-после-403)). После входа сервер выдаёт новый
 CSRF-токен («новый __Host-csrf» в диаграмме): токен, полученный до входа, не переживает смену
 пользователя. В требованиях это опция «по желанию» («Новый CSRF-токен при login, refresh,
 logout»), в варианте A делаем её при входе и выходе всегда — это одна строка. Проверка
@@ -346,7 +347,9 @@ func csrfMiddleware(next http.Handler) http.Handler {
   `Content-Type: application/json` и `X-CSRF-Token` на изменяющих методах, один refresh на все
   `401` и повтор запроса.
 - **`403` — не повод для refresh.** Это отказ CSRF-проверки или доступа: показать ошибку.
-  Исключение — вход без CSRF-cookie: его повторяют один раз ([«Вход»](#вход)).
+  Исключение — изменяющий запрос, на который `403` принёс новую `__Host-csrf`: его повторяют
+  один раз (`withCsrfRetry` ниже, правило — в [csrf.md](csrf.md#повтор-после-403)). Это касается
+  и входа, и refresh.
 - **Состояние «вошёл»** — из ответа `GET /api/v1/users/me` при старте приложения.
 
 ```js
@@ -357,13 +360,22 @@ function csrfToken() {
   return row ? row.slice('__Host-csrf='.length) : '';
 }
 
+// 403 принёс новую __Host-csrf (cookie не было) — повторить запрос один раз.
+async function withCsrfRetry(send) {
+  const sent = csrfToken();
+  const res = await send();
+  return res.status === 403 && csrfToken() !== sent ? send() : res;
+}
+
 function refreshOnce() {
   // Все одновременные 401 ждут один и тот же запрос.
-  refreshing ??= fetch('/api/v1/auth/refresh', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() },
-  }).finally(() => {
+  refreshing ??= withCsrfRetry(() =>
+    fetch('/api/v1/auth/refresh', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() },
+    }),
+  ).finally(() => {
     refreshing = null;
   });
   return refreshing;
@@ -371,15 +383,17 @@ function refreshOnce() {
 
 export async function api(path, options = {}) {
   const method = (options.method ?? 'GET').toUpperCase();
-  const send = () => {
+  const mutating = !['GET', 'HEAD'].includes(method);
+  const fetchOnce = () => {
     const headers = { ...options.headers };
-    if (!['GET', 'HEAD'].includes(method)) {
+    if (mutating) {
       // У FormData заголовок с boundary ставит браузер.
       if (!(options.body instanceof FormData)) headers['Content-Type'] ??= 'application/json';
-      headers['X-CSRF-Token'] = csrfToken();
+      headers['X-CSRF-Token'] = csrfToken(); // свежее значение и для повтора
     }
     return fetch(path, { ...options, headers, credentials: 'include' });
   };
+  const send = () => (mutating ? withCsrfRetry(fetchOnce) : fetchOnce());
 
   let res = await send();
   if (res.status === 401 && !path.startsWith('/api/v1/auth/')) {
