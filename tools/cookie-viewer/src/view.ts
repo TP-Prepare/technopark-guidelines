@@ -1,7 +1,7 @@
 /** Экраны вкладки «Все cookie». Только createElement/textContent: значения cookie не попадают в разметку. */
 import { type CookieRow, formatExpiry, isNarrowPath, maskValue, originsFor } from './cookies.ts';
 
-const COLUMNS = ['Имя', 'Значение', 'Domain', 'Path', 'Срок', 'HttpOnly', 'Secure', 'SameSite', 'Partitioned'];
+const COLUMNS = ['Имя', 'Значение', 'Domain', 'Path', 'Срок', 'HttpOnly', 'Secure', 'SameSite', 'Partitioned', ''];
 
 const SAME_SITE: Record<string, string> = {
   no_restriction: 'None',
@@ -25,10 +25,6 @@ function message(before: string, code = '', after = ''): HTMLParagraphElement {
   if (after !== '') p.append(after);
   return p;
 }
-
-/** Ключ строки для запоминания раскрытых значений. */
-export const rowKey = (row: CookieRow): string =>
-  [row.domain, row.path, row.name, row.partitioned ? 'p' : ''].join('\t');
 
 export function fillDomains(select: HTMLSelectElement, domains: string[], selected: string): void {
   select.replaceChildren(
@@ -75,11 +71,31 @@ function valueCell(row: CookieRow, shown: boolean, onToggle: () => void): HTMLTa
   return cell;
 }
 
-/** Таблица cookie; строки с Path не «/» выделены классом `narrow-path`. */
+/** Сообщение над таблицей: что Chrome удалил на самом деле. */
+export function noticeLine(text: string): HTMLElement {
+  return el('p', text, 'message notice');
+}
+
+function removeCell(row: CookieRow, disabled: boolean, onRemove: () => void): HTMLTableCellElement {
+  const label = `Удалить cookie ${row.name === '' ? '(без имени)' : row.name}`;
+  const button = el('button', '×', 'remove');
+  button.type = 'button';
+  button.title = label;
+  button.setAttribute('aria-label', label);
+  button.disabled = disabled;
+  button.addEventListener('click', onRemove);
+  const cell = el('td', '', 'remove-cell');
+  cell.append(button);
+  return cell;
+}
+
+/** Таблица cookie; строки с Path не «/» выделены классом `narrow-path`; в последней колонке — удаление. */
 export function cookieTable(
   rows: CookieRow[],
   isShown: (row: CookieRow) => boolean,
   onToggle: (row: CookieRow) => void,
+  onRemove: (row: CookieRow) => void,
+  removeDisabled: boolean,
 ): HTMLElement {
   const head = el('tr');
   head.append(...COLUMNS.map((title) => el('th', title)));
@@ -96,6 +112,7 @@ export function cookieTable(
       flag(row.secure),
       el('td', SAME_SITE[row.sameSite] ?? row.sameSite),
       flag(row.partitioned),
+      removeCell(row, removeDisabled, () => onRemove(row)),
     );
     body.append(tr);
   }

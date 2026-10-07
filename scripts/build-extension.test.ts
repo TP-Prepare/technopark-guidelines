@@ -27,7 +27,7 @@ test("built manifest asks no site access at install", () => {
   const m = readJson(join(out, "manifest.json"));
   expect(m.manifest_version).toBe(3);
   expect(m.name).toBe("Все cookie — Гайдлайны Технопарка");
-  expect(m.version).toBe("0.1.0");
+  expect(m.version).toBe(readJson(join(src, "manifest.json")).version);
   expect(m.permissions).toEqual(["cookies"]);
   expect(m.host_permissions).toBeUndefined();
   expect(m.optional_host_permissions).toEqual(["*://*/*"]);
@@ -72,14 +72,13 @@ test("zip contains dist files at archive root", async () => {
   expect(JSON.parse(new TextDecoder().decode(entries["manifest.json"]))).toEqual(readJson(join(out, "manifest.json")));
 });
 
-test("no cookie mutation in sources", () => {
+test("no cookie writes in sources: remove allowed, set never", () => {
   const dir = join(src, "src");
   const sources = readdirSync(dir).filter((f) => f.endsWith(".ts"));
   expect(sources).toContain("panel.ts");
   for (const file of sources) {
     const text = readFileSync(join(dir, file), "utf8");
     expect({ file, set: text.includes("cookies.set") }).toEqual({ file, set: false });
-    expect({ file, remove: text.includes("cookies.remove") }).toEqual({ file, remove: false });
   }
 });
 

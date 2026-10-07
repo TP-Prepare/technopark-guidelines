@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Все cookie — Гайдлайны Технопарка",
-  "version": "0.1.0",
-  "description": "Вкладка DevTools со всеми cookie домена страницы, включая HttpOnly и cookie с узким Path. Только чтение.",
+  "version": "0.2.0",
+  "description": "Вкладка DevTools со всеми cookie домена страницы, включая HttpOnly и cookie с узким Path. Можно удалять cookie.",
   "permissions": ["cookies"],
   "optional_host_permissions": ["*://*/*"],
   "devtools_page": "devtools.html"

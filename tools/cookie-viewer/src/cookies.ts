@@ -102,3 +102,88 @@ export function accessErrorLine(error: unknown): string {
 export function readErrorLine(error: unknown): string {
   return `Не удалось прочитать cookie: ${errorMessage(error)}. Нажмите «Обновить», чтобы повторить.`;
 }
+
+/** Ключ строки: домен, путь, имя и признак partitioned. */
+export const rowKey = (row: CookieRow): string =>
+  [row.domain, row.path, row.name, row.partitioned ? 'p' : ''].join('\t');
+
+/**
+ * Адрес для `chrome.cookies.remove`: `https` для `Secure` (по `http` Chrome молча ничего не удаляет),
+ * хост из `Domain` без ведущей точки, путь из `Path`. Chrome удаляет все cookie с этим именем,
+ * которые ушли бы на этот адрес, — не только эту строку.
+ */
+export function removalUrl(row: CookieRow): string {
+  let host = row.domain.replace(/^\./, '');
+  if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
+  return `${row.secure ? 'https' : 'http'}://${host}${row.path}`;
+}
+
+/** Итог удаления по спискам до и после: исчезла ли цель и что исчезло вместе с ней (в порядке `before`). */
+export function diffRemoved(
+  before: CookieRow[],
+  after: CookieRow[],
+  target: CookieRow,
+): { removed: boolean; alsoRemoved: CookieRow[] } {
+  const left = new Set(after.map(rowKey));
+  const targetKey = rowKey(target);
+  return {
+    removed: !left.has(targetKey),
+    alsoRemoved: before.filter((row) => rowKey(row) !== targetKey && !left.has(rowKey(row))),
+  };
+}
+
+/** `<имя> (<Domain>, Path=<Path>)`; пустое имя — «(без имени)». */
+export function cookieLabel(row: CookieRow): string {
+  return `${row.name === '' ? '(без имени)' : row.name} (${row.domain}, Path=${row.path})`;
+}
+
+/** Конец фразы: «.» или «: <ошибка>.». */
+const withError = (error: unknown): string => (error === undefined ? '.' : `: ${errorMessage(error)}.`);
+
+/** Сообщение, когда Chrome удалил вместе с выбранной cookie и другие. */
+export function alsoRemovedLine(rows: CookieRow[]): string {
+  return `Chrome удалил вместе с ней: ${rows.map(cookieLabel).join(', ')}. API удаляет все cookie с этим именем, которые ушли бы на её адрес.`;
+}
+
+/** Сообщение, когда выбранная cookie осталась. */
+export function notRemovedLine(row: CookieRow, error?: unknown): string {
+  return `Chrome не удалил ${cookieLabel(row)}${withError(error)}`;
+}
+
+/** Сообщение, когда «Удалить все» удалило не всё. */
+export function removeAllLine(left: number, total: number, error?: unknown): string {
+  return `Не удалось удалить ${left} из ${total}${withError(error)}`;
+}
+
+/** Без повторов по `rowKey`, в порядке первого появления. */
+export function uniqueRows(rows: CookieRow[]): CookieRow[] {
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    const key = rowKey(row);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/**
+ * Итог «Удалить все»: сколько строк таблицы осталось (новые cookie страницы не считаются) и какие
+ * cookie вне выбранного домена исчезли. `before` — таблица и cookie, которые Chrome мог удалить заодно.
+ */
+export function removeAllOutcome(
+  table: CookieRow[],
+  before: CookieRow[],
+  after: CookieRow[],
+): { left: number; outsideRemoved: CookieRow[] } {
+  const inTable = new Set(table.map(rowKey));
+  const left = new Set(after.map(rowKey));
+  return {
+    left: table.filter((row) => left.has(rowKey(row))).length,
+    outsideRemoved: before.filter((row) => !inTable.has(rowKey(row)) && !left.has(rowKey(row))),
+  };
+}
+
+/** Сообщение, когда «Удалить все» задело cookie родительского домена. */
+export function outsideRemovedLine(rows: CookieRow[]): string {
+  return `Chrome удалил также cookie вне выбранного домена: ${rows.map(cookieLabel).join(', ')}. API удаляет все cookie с этим именем, которые ушли бы на адрес удаляемой.`;
+}

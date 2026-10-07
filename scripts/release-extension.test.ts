@@ -34,3 +34,9 @@ test("releaseNotes: коммиты списком", () => {
 test("releaseNotes: без коммитов — первый выпуск", () => {
   expect(releaseNotes("0.1.0", [])).toEndWith("## Изменения\n\nПервый выпуск.\n");
 });
+
+test("releaseNotes: расширение читает и удаляет cookie", () => {
+  const notes = releaseNotes("0.2.0", []);
+  expect(notes).toContain("Читает и удаляет cookie");
+  expect(notes).not.toContain("Только чтение");
+});
