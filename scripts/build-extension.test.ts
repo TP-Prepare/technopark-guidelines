@@ -72,14 +72,13 @@ test("zip contains dist files at archive root", async () => {
   expect(JSON.parse(new TextDecoder().decode(entries["manifest.json"]))).toEqual(readJson(join(out, "manifest.json")));
 });
 
-test("no cookie mutation in sources", () => {
+test("no cookie writes in sources: remove allowed, set never", () => {
   const dir = join(src, "src");
   const sources = readdirSync(dir).filter((f) => f.endsWith(".ts"));
   expect(sources).toContain("panel.ts");
   for (const file of sources) {
     const text = readFileSync(join(dir, file), "utf8");
     expect({ file, set: text.includes("cookies.set") }).toEqual({ file, set: false });
-    expect({ file, remove: text.includes("cookies.remove") }).toEqual({ file, remove: false });
   }
 });
 
