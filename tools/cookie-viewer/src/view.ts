@@ -1,6 +1,8 @@
 /** Экраны вкладки «Все cookie». Только createElement/textContent: значения cookie не попадают в разметку. */
 import { type CookieRow, formatExpiry, isNarrowPath, maskValue, originsFor } from './cookies.ts';
 
+export { rowKey } from './cookies.ts';
+
 const COLUMNS = ['Имя', 'Значение', 'Domain', 'Path', 'Срок', 'HttpOnly', 'Secure', 'SameSite', 'Partitioned'];
 
 const SAME_SITE: Record<string, string> = {
@@ -25,10 +27,6 @@ function message(before: string, code = '', after = ''): HTMLParagraphElement {
   if (after !== '') p.append(after);
   return p;
 }
-
-/** Ключ строки для запоминания раскрытых значений. */
-export const rowKey = (row: CookieRow): string =>
-  [row.domain, row.path, row.name, row.partitioned ? 'p' : ''].join('\t');
 
 export function fillDomains(select: HTMLSelectElement, domains: string[], selected: string): void {
   select.replaceChildren(

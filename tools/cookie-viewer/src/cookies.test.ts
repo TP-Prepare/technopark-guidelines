@@ -1,13 +1,20 @@
 import { expect, test } from 'bun:test';
 import {
   accessErrorLine,
+  alsoRemovedLine,
+  cookieLabel,
   defaultDomain,
+  diffRemoved,
   domainsFor,
   formatExpiry,
   isNarrowPath,
   maskValue,
   originsFor,
+  notRemovedLine,
   readErrorLine,
+  removalUrl,
+  removeAllLine,
+  rowKey,
   sortCookies,
   type CookieRow,
 } from './cookies.ts';
@@ -82,4 +89,44 @@ test('accessErrorLine: текст из задания и сообщение ош
 });
 test('readErrorLine: сообщение ошибки', () => {
   expect(readErrorLine(new Error('x'))).toBe('Не удалось прочитать cookie: x. Нажмите «Обновить», чтобы повторить.');
+});
+
+test('rowKey: домен, путь, имя и признак partitioned', () => {
+  expect(rowKey(r('.example.ru', '/api', 'a'))).toBe('.example.ru\t/api\ta\t');
+  expect(rowKey({ ...r('example.ru', '/', 'a'), partitioned: true })).toBe('example.ru\t/\ta\tp');
+});
+
+test('removalUrl', () => {
+  expect(removalUrl(r('example.ru', '/', 'a'))).toBe('http://example.ru/');
+  expect(removalUrl(r('.example.ru', '/', 'a'))).toBe('http://example.ru/');
+  expect(removalUrl({ ...r('example.ru', '/', 'a'), secure: true })).toBe('https://example.ru/');
+  expect(removalUrl(r('127.0.0.1', '/api/v1/auth', 'refresh_token'))).toBe('http://127.0.0.1/api/v1/auth');
+  expect(removalUrl(r('::1', '/', 'a'))).toBe('http://[::1]/');
+  expect(removalUrl(r('[::1]', '/', 'a'))).toBe('http://[::1]/');
+});
+
+test('diffRemoved', () => {
+  const host = r('a.example.ru', '/', 'a');
+  const parent = r('.example.ru', '/', 'a');
+  const narrow = r('a.example.ru', '/api', 'a');
+  const other = r('a.example.ru', '/', 'b');
+  expect(diffRemoved([host, narrow, other], [host, other], narrow)).toEqual({ removed: true, alsoRemoved: [] });
+  expect(diffRemoved([host, parent, narrow, other], [other], narrow)).toEqual({ removed: true, alsoRemoved: [host, parent] });
+  expect(diffRemoved([host, narrow], [host, narrow], narrow)).toEqual({ removed: false, alsoRemoved: [] });
+  expect(diffRemoved([], [], narrow)).toEqual({ removed: true, alsoRemoved: [] });
+});
+
+test('тексты удаления', () => {
+  const host = r('a.example.ru', '/', 'a');
+  const parent = r('.example.ru', '/', 'a');
+  expect(cookieLabel(r('example.ru', '/', ''))).toBe('(без имени) (example.ru, Path=/)');
+  expect(alsoRemovedLine([host, parent])).toBe(
+    'Chrome удалил вместе с ней: a (a.example.ru, Path=/), a (.example.ru, Path=/). API удаляет все cookie с этим именем, которые ушли бы на её адрес.',
+  );
+  expect(notRemovedLine(host)).toBe('Chrome не удалил a (a.example.ru, Path=/).');
+  expect(notRemovedLine(host, new Error('No host permissions'))).toBe(
+    'Chrome не удалил a (a.example.ru, Path=/): No host permissions.',
+  );
+  expect(removeAllLine(2, 5)).toBe('Не удалось удалить 2 из 5.');
+  expect(removeAllLine(2, 5, 'boom')).toBe('Не удалось удалить 2 из 5: boom.');
 });
