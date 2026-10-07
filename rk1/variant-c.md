@@ -141,7 +141,8 @@ sequenceDiagram
   ответ API, если в запросе cookie ещё нет, — даже на `401` стартового запроса, как здесь.
   Отдельная ручка за токеном не нужна: это лишний запрос и лишний шаг на фронте. Если cookie
   всё же нет (удалили в другой вкладке), вход ответит `403` и этим же ответом принесёт новую
-  cookie — фронт один раз повторяет запрос (`login()` ниже).
+  cookie — фронт один раз повторяет запрос. Так же повторяется любой изменяющий запрос
+  (`api()` ниже, правило — в [csrf.md](csrf.md#повтор-после-403)).
 - **Новый CSRF-токен после входа.** Токен, полученный до входа, не переживает смену
   пользователя. В требованиях это опция «по желанию» («Новый CSRF-токен при login, refresh,
   logout»); здесь делаем её при входе и выходе всегда — это одна строка.
@@ -423,7 +424,8 @@ func authMiddleware(store SessionStore, next http.Handler) http.Handler {
   `X-CSRF-Token` на изменяющих методах.
 - **`401` — страница входа.** Ни refresh, ни повтора запроса: это проще, чем в A и B.
 - **`403` — не повод выходить.** Это отказ CSRF-проверки или доступа: показать ошибку.
-  Исключение — вход без CSRF-cookie: его повторяют один раз (`login()` ниже).
+  Исключение — изменяющий запрос, на который `403` принёс новую `__Host-csrf`: его повторяют
+  один раз (`api()` ниже).
 - **Состояние «вошёл»** — из ответа `GET /api/v1/users/me` при старте приложения. После F5
   cookie остались в браузере, и запрос просто проходит; CSRF-токен фронт заново читает из
   `document.cookie`.
@@ -436,9 +438,16 @@ function csrfToken() {
 
 export async function api(path, options = {}) {
   const method = (options.method ?? 'GET').toUpperCase();
-  const headers = { ...options.headers };
-  if (!['GET', 'HEAD'].includes(method)) headers['X-CSRF-Token'] = csrfToken();
-  const res = await fetch(path, { ...options, headers, credentials: 'include' });
+  const mutating = !['GET', 'HEAD'].includes(method);
+  const send = () => {
+    const headers = { ...options.headers };
+    if (mutating) headers['X-CSRF-Token'] = csrfToken(); // свежее значение и для повтора
+    return fetch(path, { ...options, headers, credentials: 'include' });
+  };
+  const sent = csrfToken();
+  let res = await send();
+  // Cookie не было (удалили в другой вкладке): 403 уже принёс новую — повтор один раз.
+  if (mutating && res.status === 403 && csrfToken() !== sent) res = await send();
   if (res.status === 401 && !path.startsWith('/api/v1/auth/')) {
     onSessionLost(); // своя функция: сбросить состояние, открыть страницу входа
   }
@@ -447,15 +456,11 @@ export async function api(path, options = {}) {
 
 export async function login(username, password) {
   // __Host-csrf уже принёс стартовый GET /api/v1/users/me.
-  const hadToken = csrfToken() !== '';
-  const send = () => api('/api/v1/auth/login', {
+  return api('/api/v1/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ login: username, password }),
   });
-  const res = await send();
-  // Cookie не было (удалили в другой вкладке): 403 уже принёс новую — повтор один раз.
-  return res.status === 403 && !hadToken ? send() : res;
 }
 
 export async function logout() {
